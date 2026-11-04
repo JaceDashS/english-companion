@@ -38,3 +38,13 @@
 ## Platform Components
 - `src/components/GoogleButton.web.tsx` renders Google Identity Services into the DOM element of a React Native Web `View`; the native `GoogleButton.tsx` renders nothing.
 - `src/components/Notices.tsx` reads `/health` and `/notices` and shows dismissible titles, or an outage message when the API is unreachable and no notice exists.
+
+## Android Native Build
+- Input: Expo configuration and installed Android SDK and JDK.
+- Output: Generated Android projects and `dist-android/english-companion-android.apk`.
+- Code: `scripts/build-android.mjs` and `plugins/with-short-cmake-path.cjs`.
+- The config plugin adds a root Gradle rule for application and library Android plugins. During DSL finalization each project receives a separate `.cxx/<project-name>` staging directory and `CMAKE_OBJECT_PATH_MAX=250`, including Expo modules compiled from source. This keeps CMake outputs outside the deeply nested dependency directories without modifying dependencies.
+- Reference: [CMake object path limit](https://cmake.org/cmake/help/v3.22/variable/CMAKE_OBJECT_PATH_MAX.html) describes the hashing of object paths above the configured limit.
+- Scenario: Build under a nested Windows checkout with Expo modules compiled from source. Both the app and Expo libraries use the short staging paths and the release APK is copied only after Gradle succeeds.
+- Guide: [Build](../../guides/10-development.md#build)
+- All scenarios: [Windows Native Build](../../testing/scenarios/app/10-english-companion.md#windows-native-build)

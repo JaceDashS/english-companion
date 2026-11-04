@@ -1,4 +1,4 @@
-# English Companion Scenarios
+# English Companion Verification
 
 ## English Companion Scenarios
 - Design: [English Companion Design](../../../design/app/10-english-companion.md#screens-and-flow)
@@ -50,3 +50,10 @@
 - Steps: Press the header account button at 1280 px and 360 px, read the rows, press sign out, then reload.
 - Expected result: Name, username, "tester@example.com (인증 전)", "Google 전용" and "없음" show without horizontal scroll; sign out sends one CSRF-protected logout and the login screen stays after reload.
 - Test: `tests/api.test.ts` "account reads session details and treats a missing password flag as a password account"; mocked Edge walkthrough of the web export.
+
+### Windows Native Build
+- Input: A nested Windows checkout, JDK 17, Android SDK, and Expo modules compiled from source.
+- Steps: Set `ANDROID_HOME`, run `npm run build:android`, and inspect the generated CMake staging directories and APK manifest.
+- Expected result: Application and library CMake outputs use separate `.cxx/<project-name>` directories; the build completes and produces an APK with package `com.jaces.englishcompanion` and both arm64-v8a and x86_64 native libraries.
+- Design: [Android Native Build](../../../design/app/10-english-companion.md#android-native-build)
+- Verified 2026-11-05: Gradle 9.4.1 with Microsoft JDK 17.0.18 built the APK successfully. `aapt dump badging` confirmed package `com.jaces.englishcompanion`, version 0.1.0, min SDK 24, target SDK 36, arm64-v8a and x86_64. `apksigner verify --print-certs` passed with the Android Debug certificate. APK size 38,283,557 bytes, SHA256 `b67cf38b9f253e7b6c5135f4eb7e472ecd3e2e5a0fc3b9247a8eadcfd2c3b182`. This is artifact validation; device launch and real account sign-in are not verified.

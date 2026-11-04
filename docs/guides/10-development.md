@@ -17,6 +17,8 @@ Run `npm test` afterwards; invalid content fails "bundled content is valid and s
 
 ## Build
 - Web: `npm run export:web` writes `dist/`. The platform builds the container from this repository's `Dockerfile`.
-- Android: `npm run build:android` (Java 21 and Android SDK) writes `dist-android/english-companion-android.apk`.
+- Android: `npm run build:android` (JDK 17 and Android SDK, with `ANDROID_HOME` pointing to the SDK) writes `dist-android/english-companion-android.apk`. On Windows, the usual SDK location is `%LOCALAPPDATA%/Android/Sdk`.
+- The generated project uses separate short CMake staging directories for the app and Android libraries. This includes Expo modules built from source, which otherwise can exceed Windows tool path limits in a nested checkout. See [Android Native Build](../design/app/10-english-companion.md#android-native-build).
+- The generated release variant uses Expo's Android debug signing key for local installation. Store distribution requires a separately configured release key.
 
 Example: add one unit, run the tests, export the web build and open it through a static server.
