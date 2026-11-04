@@ -5,6 +5,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY app.config.js index.ts tsconfig.json ./
 COPY plugins plugins
+COPY assets assets
 COPY src src
 # API origin for login and data, the main site link, and the registered app ID for app-specific notices
 ARG EXPO_PUBLIC_EC_API_ORIGIN=https://api.jace-s.com
