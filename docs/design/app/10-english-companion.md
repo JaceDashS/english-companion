@@ -16,6 +16,13 @@
 - Output: Nothing persisted; the value lives only in component state.
 - Code: `QuizMemo` in `src/screens/QuizScreen.tsx`, rendered with `key={word.id}` so it remounts empty whenever the question changes.
 
+## Account Screen
+- Input: `EnglishClient`, busy and error state from `App`, and back, logout and expired callbacks.
+- Output: Account details, a My Page link, a sign-out button and a back button.
+- Code: `src/screens/AccountScreen.tsx` exports `AccountScreen`; `src/api/client.ts` `EnglishClient.account()` reads `/auth/session` and returns `Account` (`src/api/types.ts`) with `hasLocalPassword` defaulting to true when absent. `src/App.tsx` opens it from the header `open-account` button as the `account` view and reuses the existing `logout`.
+- A 401 while loading returns to the login screen with the session-ended notice.
+- Scenario: A Google-only account opens the account screen and sees "Google 전용", then signs out and lands on the login screen.
+
 ## Content
 - Input: `src/content/words.json` (`{version: 1, units: [...]}`).
 - Output: `EnglishUnit[]`, or a `ContentError` naming the invalid path.

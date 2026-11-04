@@ -24,3 +24,8 @@
 ## Transport
 - Definition: Platform-specific HTTP layer; the web build uses browser cookies, the native build keeps the session in encrypted storage
 - Code: `Transport`, `src/api/transport.ts`, `src/api/transport.web.ts`
+
+## Account Screen
+- Definition: The screen opened from the home header that shows the signed-in platform account and signs out
+- Code: `AccountScreen`, `EnglishClient.account`, `Account`
+- Avoid: "My Page", which is the main site page where profile changes happen

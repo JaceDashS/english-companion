@@ -1,5 +1,5 @@
 import { APP_KEY } from "../config";
-import { ApiError, type Clock, type Progress, type StudyResult, type Transport, type User } from "./types";
+import { ApiError, type Account, type Clock, type Progress, type StudyResult, type Transport, type User } from "./types";
 
 /** Account and progress API used by every screen. Requests run one at a time so session updates never race. */
 export class EnglishClient {
@@ -41,6 +41,15 @@ export class EnglishClient {
         if (error instanceof ApiError && error.status === 401) return null;
         throw error;
       }
+    });
+  }
+
+  /** Reads the signed-in account for the account screen. A 401 clears the stored session like any other call. */
+  account(): Promise<Account> {
+    return this.serialize(async () => {
+      const body = await this.call<{ user: User; hasLocalPassword?: boolean }>("/auth/session");
+      this.user = body.user;
+      return { user: body.user, hasLocalPassword: body.hasLocalPassword !== false };
     });
   }
 

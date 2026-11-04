@@ -22,6 +22,12 @@
 - The web and Android apps use the existing platform account. Web sign-in is shared with the other jace-s apps in the same browser. Direct web entry shows the login dialog with password and Google sign-in; Android uses password sign-in.
 - Accounts without app permission, or with a temporary password, see a message and a link to the main page.
 
+## Account Screen
+- The home header shows the username and an account button. The account screen shows the name, username, email with its verification state, sign-in method (username and password, or Google only), join date and last sign-in. Missing values show "none".
+- Profile and password changes stay on the main site My Page, linked from the screen.
+- Sign out ends the platform session and returns to the login screen. On the web the other jace-s apps and the main site in the same browser are signed out too. A failed sign out keeps the session and shows a retry message.
+- Design: [Account Screen](../../design/app/10-english-companion.md#account-screen)
+
 ## Example
 - Input: A unit with the word "run" whose intended sense is "operate"; the learner types a note and picks "She runs a small bakery downtown."
 - Steps: Check the answer, move to the next question, finish and save.

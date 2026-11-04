@@ -44,3 +44,9 @@
 - Steps: Parse the content.
 - Expected result: `ContentError` for each.
 - Test: `tests/domain.test.ts` → "content parsing keeps fields and rejects invalid shapes".
+
+### Account Details And Sign Out
+- Input: Signed-in Google-only account with an unverified email and no last sign-in time.
+- Steps: Press the header account button at 1280 px and 360 px, read the rows, press sign out, then reload.
+- Expected result: Name, username, "tester@example.com (인증 전)", "Google 전용" and "없음" show without horizontal scroll; sign out sends one CSRF-protected logout and the login screen stays after reload.
+- Test: `tests/api.test.ts` "account reads session details and treats a missing password flag as a password account"; mocked Edge walkthrough of the web export.

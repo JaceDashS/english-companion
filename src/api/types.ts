@@ -2,6 +2,17 @@ export interface User {
   id: string;
   username: string;
   mustChangePassword?: boolean;
+  displayName?: string | null;
+  email?: string | null;
+  emailVerified?: boolean;
+  createdAt?: string;
+  lastLoginAt?: string | null;
+}
+
+/** Current session details shown on the account screen. `hasLocalPassword` is false for Google-only accounts. */
+export interface Account {
+  user: User;
+  hasLocalPassword: boolean;
 }
 
 export interface Clock {

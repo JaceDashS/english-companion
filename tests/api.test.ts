@@ -105,3 +105,30 @@ test("account date follows the server clock and account zone", () => {
   assert.equal(accountDate({ serverNow: "2026-11-04T14:59:00Z", timeZone: "Asia/Seoul", today: "" }, 0), "2026-11-04");
   assert.equal(accountDate({ serverNow: "2026-11-04T14:59:00Z", timeZone: "Asia/Seoul", today: "" }, 60_000), "2026-11-05");
 });
+
+test("account reads session details and treats a missing password flag as a password account", async () => {
+  const calls: Call[] = [];
+  const store = memoryStore(JSON.stringify({ session: "s", csrf: "c" }));
+  const client = new EnglishClient(
+    createNativeTransport(
+      "https://api.jace-s.com",
+      store,
+      fakeFetch(
+        [
+          { body: { user: { id: "u1", username: "a", email: "a@example.com", emailVerified: true }, hasLocalPassword: false } },
+          { body: { user: { id: "u1", username: "a" } } },
+          { status: 401, body: { error: "UNAUTHENTICATED" } },
+        ],
+        calls,
+      ),
+    ),
+  );
+  const google = await client.account();
+  assert.equal(google.hasLocalPassword, false);
+  assert.equal(google.user.email, "a@example.com");
+  assert.equal(calls[0].url, "https://api.jace-s.com/auth/session");
+  assert.equal((await client.account()).hasLocalPassword, true);
+  await assert.rejects(client.account(), (error: unknown) => error instanceof ApiError && error.status === 401);
+  assert.equal(client.currentUser, null);
+  assert.equal(store.value, null);
+});

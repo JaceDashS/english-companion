@@ -10,6 +10,7 @@ import { API_ORIGIN, SITE_ORIGIN } from "./config";
 import { parseContent, type EnglishUnit, type EnglishWord } from "./content/content";
 import rawContent from "./content/words.json";
 import { quizWords } from "./domain/study";
+import { AccountScreen } from "./screens/AccountScreen";
 import { HomeScreen } from "./screens/HomeScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { QuizScreen } from "./screens/QuizScreen";
@@ -27,6 +28,7 @@ type Gate =
 
 type View_ =
   | { kind: "home" }
+  | { kind: "account" }
   | { kind: "study"; unit: EnglishUnit }
   | { kind: "quiz"; title: string; words: EnglishWord[] }
   | { kind: "result"; results: Record<string, StudyResult> };
@@ -102,6 +104,11 @@ export default function App() {
     }
   };
 
+  const expired = useCallback(() => {
+    setView({ kind: "home" });
+    setGate({ kind: "login", notice: "로그인이 끝났습니다. 다시 로그인해 주세요." });
+  }, []);
+
   let body: React.ReactNode;
   if (gate.kind === "checking") body = <Text style={styles.muted}>로그인 확인 중…</Text>;
   else if (gate.kind === "login") body = <LoginScreen client={client} notice={gate.notice} onLoggedIn={(user) => enter(user)} />;
@@ -111,6 +118,20 @@ export default function App() {
         <Text style={styles.heading}>{gate.message}</Text>
         <Button title="메인 페이지로" variant="primary" onPress={() => void Linking.openURL(SITE_ORIGIN + "/")} />
       </View>
+    );
+  else if (view.kind === "account")
+    body = (
+      <AccountScreen
+        client={client}
+        busy={busy}
+        error={error}
+        onBack={() => {
+          setError("");
+          setView({ kind: "home" });
+        }}
+        onLogout={() => void logout()}
+        onExpired={expired}
+      />
     );
   else if (view.kind === "study") body = <StudyScreen unit={view.unit} onBack={() => setView({ kind: "home" })} onQuiz={() => setView({ kind: "quiz", title: view.unit.title, words: quizWords(view.unit.words) })} />;
   else if (view.kind === "quiz")
@@ -137,7 +158,7 @@ export default function App() {
             {gate.kind === "ready" && view.kind === "home" && (
               <View style={styles.row}>
                 <Text style={styles.muted}>{gate.user.username}</Text>
-                <Button title="로그아웃" variant="ghost" disabled={busy} onPress={() => void logout()} />
+                <Button title="계정" variant="ghost" disabled={busy} onPress={() => setView({ kind: "account" })} testID="open-account" />
               </View>
             )}
           </View>
