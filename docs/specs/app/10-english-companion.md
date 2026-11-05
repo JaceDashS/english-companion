@@ -32,3 +32,11 @@
 - Input: A unit with the word "run" whose intended sense is "operate"; the learner types a note and picks "She runs a small bakery downtown."
 - Steps: Check the answer, move to the next question, finish and save.
 - Expected result: The answer passes, the next question shows an empty memo, and the save request contains only `{id: "run", result: "PASS"}`.
+
+## Android Google Account Picker
+
+Android login must use the official Google account picker and the same account/session as web login. Cancellation creates no session; retry obtains a fresh native challenge. Browser GIS authentication stays separate. APK packaging and physical picker validation are deferred until mobile web testing is complete.
+
+Example input: User cancels the Android picker. Steps: Open login, choose Google, cancel. Expected result: Login remains available without a credential exchange.
+
+- Design: [Companion authentication](../../design/app/10-english-companion.md#native-google-implementation)

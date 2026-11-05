@@ -132,3 +132,60 @@ test("account reads session details and treats a missing password flag as a pass
   assert.equal(client.currentUser, null);
   assert.equal(store.value, null);
 });
+
+import { signInWithNativeGoogle } from "../src/components/nativeGoogleFlow";
+
+test("native Google challenge and token exchange retain the encrypted account session", async () => {
+  const calls: Call[] = [];
+  const store = memoryStore();
+  const client = new EnglishClient(createNativeTransport("https://api.jace-s.com", store, fakeFetch([
+    { body: { nonce: "a".repeat(64) } },
+    { body: { user: { id: "native-user", username: "native" } }, cookies: ["session=native-google", "csrf=native-csrf"] },
+    { body: {} },
+  ], calls)));
+  const nonce = await client.nativeGoogleChallenge();
+  assert.equal((await client.nativeGoogleLogin("synthetic-token", nonce, false)).id, "native-user");
+  assert.equal(calls[0].url, "https://api.jace-s.com/auth/google/native/challenge");
+  assert.equal(calls[1].url, "https://api.jace-s.com/auth/google/native");
+  assert.equal(JSON.parse(String(calls[1].init.body)).nonce, nonce);
+  assert.equal(JSON.parse(String(calls[1].init.body)).remember, false);
+  assert.equal(JSON.parse(store.value!).session, "native-google");
+  await client.logout();
+  assert.equal((calls[2].init.headers as Record<string, string>)["x-csrf-token"], "native-csrf");
+});
+
+test("native Google cancellation and stale callbacks never exchange a credential; retry uses a new nonce", async () => {
+  const attempts: any[] = [];
+  let nonce = 0;
+  let selected: string | null = null;
+  let active = true;
+  const client = {
+    googleConfig: async () => ({ enabled: true, clientId: "public-web-client" }),
+    nativeGoogleChallenge: async () => String(++nonce).padStart(64, "0"),
+    nativeGoogleLogin: async (...args: any[]) => { attempts.push(args); return { id: "google-user" }; },
+  };
+  const configurations: any[] = [];
+  const provider = {
+    checkPlayServices: async () => true,
+    configure: (value: any) => { configurations.push(value); },
+    pickAccount: async () => selected,
+  };
+  assert.equal(await signInWithNativeGoogle(client, provider, true), null);
+  assert.equal(attempts.length, 0);
+  selected = "synthetic-id-token";
+  assert.deepEqual(await signInWithNativeGoogle(client, provider, false), { id: "google-user" });
+  assert.equal(attempts[0][1], "2".padStart(64, "0"));
+  assert.equal(attempts[0][2], false);
+  assert.notEqual(configurations[0].nonce, configurations[1].nonce);
+  assert.equal(configurations[1].autoSelectOnSignIn, false);
+  provider.pickAccount = async () => { active = false; return "late-token"; };
+  assert.equal(await signInWithNativeGoogle(client, provider, true, () => active), null);
+  assert.equal(attempts.length, 1);
+});
+
+test("disabled native Google configuration never invokes the picker or issues a challenge", async () => {
+  const forbidden = async () => { throw new Error("must not run"); };
+  await assert.rejects(signInWithNativeGoogle({ googleConfig: async () => ({ enabled: false, clientId: null }),
+    nativeGoogleChallenge: forbidden, nativeGoogleLogin: forbidden },
+    { checkPlayServices: forbidden, configure: () => { throw Error("must not configure"); }, pickAccount: forbidden }, true), /GOOGLE_NOT_CONFIGURED/);
+});

@@ -48,3 +48,23 @@
 - Scenario: Build under a nested Windows checkout with Expo modules compiled from source. Both the app and Expo libraries use the short staging paths and the release APK is copied only after Gradle succeeds.
 - Guide: [Build](../../guides/10-development.md#build)
 - All scenarios: [Windows Native Build](../../testing/scenarios/app/10-english-companion.md#windows-native-build)
+
+## Native Google Implementation
+
+- Inputs: Runtime web Client ID, remember selection, server native nonce and official picker credential.
+- Outputs: Existing account session or null on cancellation and stale callbacks; safe localized errors on failure.
+- Code: `src/components/GoogleButton.tsx`, `src/components/nativeGoogleFlow.ts`, `src/api/client.ts` and the locked package dependencies. Android SDK autolinking is used; web resolves GoogleButton.web.tsx without loading the native SDK.
+- Public contracts: NativeGoogleClient supplies config, nativeGoogleChallenge and nativeGoogleLogin; NativeGoogleProvider supplies Play Services checks, configuration and explicit account selection. signInWithNativeGoogle checks liveness between asynchronous steps, configures the fresh nonce with autoSelectOnSignIn false, and exchanges successful credentials only. GoogleButton disables duplicate submissions and ignores unmounted results.
+- The client obtains POST /auth/google/native/challenge, then sends credential, nonce, remember and local timeZone to POST /auth/google/native. Existing native transport persists session and CSRF cookies in encrypted storage. Browser cookie challenges are unchanged.
+- Representative scenario input: Picker cancellation followed by retry. Steps: Cancel once and open again. Expected result: No first exchange and a new nonce for the second attempt.
+- Spec: [Companion requirements](../../specs/app/10-english-companion.md#android-google-account-picker)
+- Architecture: [Overview](../../architecture/10-overview.md)
+- Scenarios: [Authentication cases](../../testing/scenarios/app/10-english-companion.md#native-google-contracts)
+
+```mermaid
+flowchart LR
+ A[Google button] --> B[Fresh native nonce]
+ B --> C[Android account picker]
+ C --> D[Native token exchange]
+ D --> E[Existing session]
+```

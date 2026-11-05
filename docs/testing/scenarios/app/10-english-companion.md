@@ -57,3 +57,12 @@
 - Expected result: Application and library CMake outputs use separate `.cxx/<project-name>` directories; the build completes and produces an APK with package `com.jaces.englishcompanion` and both arm64-v8a and x86_64 native libraries.
 - Design: [Android Native Build](../../../design/app/10-english-companion.md#android-native-build)
 - Verified 2026-11-05: Gradle 9.4.1 with Microsoft JDK 17.0.18 built the APK successfully. `aapt dump badging` confirmed package `com.jaces.englishcompanion`, version 0.1.0, min SDK 24, target SDK 36, arm64-v8a and x86_64. `apksigner verify --print-certs` passed with the Android Debug certificate. APK size 38,283,557 bytes, SHA256 `b67cf38b9f253e7b6c5135f4eb7e472ecd3e2e5a0fc3b9247a8eadcfd2c3b182`. This is artifact validation; device launch and real account sign-in are not verified.
+
+## Native Google Contracts
+
+- Design: [Native Google Implementation](../../../design/app/10-english-companion.md#native-google-implementation)
+- Test: `tests/api.test.ts`.
+- Input: Mock provider success, cancellation, retry, disabled configuration or a stale callback.
+- Steps: Run native orchestration and transport with a fresh challenge and observe exchanges and stored cookies.
+- Expected result: Success exchanges once with matching nonce and remember value; cancellation and stale callbacks never exchange; retry obtains a new nonce; disabled config never opens the provider. Session and CSRF credentials use existing encrypted storage and logout protections.
+- Validation boundary: Type checks, local client tests and web export do not prove Android compilation, Console registration, physical account selection or real Google login. APK creation is deferred.

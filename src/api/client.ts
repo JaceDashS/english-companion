@@ -81,6 +81,22 @@ export class EnglishClient {
     });
   }
 
+  /** Native one-use challenge for Android Credential Manager. */
+  nativeGoogleChallenge(): Promise<string> {
+    return this.serialize(async () => (await this.call<{ nonce: string }>("/auth/google/native/challenge", {})).nonce);
+  }
+  /** Exchange a nonce-bound native Google token through the existing encrypted session transport. */
+  nativeGoogleLogin(credential: string, nonce: string, remember: boolean): Promise<User> {
+    return this.serialize(async () => {
+      await this.transport.forget();
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const result = await this.call<{ user: User }>("/auth/google/native", { credential, nonce, remember, timeZone });
+      if (!await this.transport.hasCredentials()) throw new Error("로그인 세션을 저장하지 못했습니다.");
+      this.user = result.user;
+      return result.user;
+    });
+  }
+
   /** Revokes the server session. A failure stays retryable instead of pretending the user signed out. */
   logout(): Promise<void> {
     return this.serialize(async () => {

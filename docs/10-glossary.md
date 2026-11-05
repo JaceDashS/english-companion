@@ -29,3 +29,7 @@
 - Definition: The screen opened from the home header that shows the signed-in platform account and signs out
 - Code: `AccountScreen`, `EnglishClient.account`, `Account`
 - Avoid: "My Page", which is the main site page where profile changes happen
+
+## Native Google Challenge
+
+A one-use server nonce bound to the Android Google account picker token. Code: nativeGoogleChallenge, nativeGoogleLogin and signInWithNativeGoogle. Separate from the browser cookie challenge.
