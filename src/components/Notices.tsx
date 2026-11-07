@@ -37,20 +37,29 @@ export function Notices() {
     };
   }, []);
   if (!notices.length) return null;
+  // Several notices share one toast, one line each, instead of stacking separate toasts
   return (
     <View accessibilityLabel="서비스 공지" style={{ gap: 8 }}>
-      {notices.map((notice) => (
-        <View
-          key={notice.id}
-          accessibilityRole="alert"
-          style={{ flexDirection: "row", gap: 8, alignItems: "flex-start", padding: 12, borderRadius: 10, backgroundColor: colors.surfaceRaised, borderColor: colors.accent, borderWidth: 1 }}
-        >
-          <Text style={{ flex: 1, color: colors.text, fontWeight: "600" }}>{notice.title}</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="공지 닫기" onPress={() => setNotices((list) => list.filter((n) => n.id !== notice.id))}>
-            <Text style={{ color: colors.text, fontSize: 18, lineHeight: 20 }}>×</Text>
-          </Pressable>
+      <View
+        accessibilityRole="alert"
+        style={{ flexDirection: "row", gap: 8, alignItems: "flex-start", padding: 12, borderRadius: 10, backgroundColor: colors.surfaceRaised, borderColor: colors.accent, borderWidth: 1 }}
+      >
+        <View style={{ flex: 1, gap: 6 }}>
+          {notices.length === 1 ? (
+            <Text style={{ color: colors.text, fontWeight: "600" }}>{notices[0].title}</Text>
+          ) : (
+            notices.map((notice) => (
+              <View key={notice.id} style={{ flexDirection: "row", gap: 6 }}>
+                <Text style={{ color: colors.text, fontWeight: "600" }}>·</Text>
+                <Text style={{ flex: 1, color: colors.text, fontWeight: "600" }}>{notice.title}</Text>
+              </View>
+            ))
+          )}
         </View>
-      ))}
+        <Pressable accessibilityRole="button" accessibilityLabel="공지 닫기" onPress={() => setNotices([])}>
+          <Text style={{ color: colors.text, fontSize: 18, lineHeight: 20 }}>×</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
