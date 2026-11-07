@@ -37,7 +37,7 @@
 
 ## Platform Components
 - `src/components/GoogleButton.web.tsx` renders Google Identity Services into the DOM element of a React Native Web `View`; the native `GoogleButton.tsx` renders nothing.
-- `src/components/Notices.tsx` reads `/health` and `/notices` and shows the titles in one dismissible toast (one bulleted line per notice when there are several, never stacked toasts), or an outage message when the API is unreachable and no notice exists.
+- `src/components/Notices.tsx` reads `/health` and `/notices` and shows the titles in one dismissible toast (one bulleted line per notice when there are several, never stacked toasts), or the fixed text "Unable to connect to the server." when the API is unreachable and no notice exists. `src/components/noticeToast.ts` `resolveNoticeToast` decides the toast: it closes after 8 seconds while the API is reachable and stays until closed otherwise (tests: `tests/notices.test.ts`). Example: reachable with two notices gives one toast with two lines that closes after 8 seconds.
 
 ## Android Native Build
 - Input: Expo configuration and installed Android SDK and JDK.
