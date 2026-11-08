@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Linking, ScrollView, Text, View } from "react-native";
+import { Linking, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { accountDate, EnglishClient } from "./api/client";
@@ -17,6 +17,8 @@ import { QuizScreen } from "./screens/QuizScreen";
 import { ResultScreen } from "./screens/ResultScreen";
 import { StudyScreen } from "./screens/StudyScreen";
 import { Button, colors, styles } from "./ui";
+import { Chrome } from "./Chrome";
+import { isDesktopLayout } from "./responsive";
 
 const UNITS: EnglishUnit[] = parseContent(rawContent);
 
@@ -39,6 +41,8 @@ const BLOCKED: Record<string, string> = {
 };
 
 export default function App() {
+  const { width, height } = useWindowDimensions();
+  const desktop = isDesktopLayout(width, height);
   const client = useMemo(() => new EnglishClient(createTransport(API_ORIGIN)), []);
   const [gate, setGate] = useState<Gate>({ kind: "checking" });
   const [view, setView] = useState<View_>({ kind: "home" });
@@ -140,6 +144,7 @@ export default function App() {
   else
     body = (
       <HomeScreen
+        desktop={desktop}
         units={UNITS}
         progress={gate.progress}
         today={today}
@@ -148,29 +153,12 @@ export default function App() {
       />
     );
 
-  return (
-    <SafeAreaProvider>
-      <StatusBar style="light" />
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-          <View style={[styles.row, { justifyContent: "space-between" }]}>
-            <Text style={styles.heading}>English Companion</Text>
-            {gate.kind === "ready" && view.kind === "home" && (
-              <View style={styles.row}>
-                <Text style={styles.muted}>{gate.user.username}</Text>
-                <Button title="계정" variant="ghost" disabled={busy} onPress={() => setView({ kind: "account" })} testID="open-account" />
-              </View>
-            )}
-          </View>
-          <Notices />
-          {gate.kind === "ready" && view.kind === "home" && !!error && (
-            <Text accessibilityRole="alert" style={styles.error}>
-              {error}
-            </Text>
-          )}
-          {body}
-        </ScrollView>
-      </SafeAreaView>
-    </SafeAreaProvider>
-  );
+  const content = <ScrollView contentContainerStyle={[styles.screen, { maxWidth: view.kind === "home" && gate.kind === "ready" ? 1320 : 860 }]} keyboardShouldPersistTaps="handled">
+    <Notices />
+    {gate.kind === "ready" && view.kind === "home" && !!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+    {body}
+  </ScrollView>;
+  return <SafeAreaProvider><StatusBar style="light" /><SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    {gate.kind === "ready" && (view.kind === "home" || view.kind === "account") ? <Chrome desktop={desktop} account={view.kind === "account"} username={gate.user.username} onHome={() => { setError(""); setView({ kind: "home" }); }} onAccount={() => setView({ kind: "account" })}>{content}</Chrome> : content}
+  </SafeAreaView></SafeAreaProvider>;
 }

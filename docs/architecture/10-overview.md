@@ -18,3 +18,7 @@ flowchart LR
 - This repository owns screens, word content and the Android build.
 
 Example: a learner signs in on japanese.jace-s.com, then opens english.jace-s.com in the same browser. The API session cookie is shared, so the English app starts signed in.
+
+## Responsive Presentation
+
+The shared Expo screens select desktop or compact composition from available logical dimensions. Browser and Android use one screen tree; session and storage adapters remain platform specific. See [Responsive Layout Design](../design/app/30-responsive-layout.md).

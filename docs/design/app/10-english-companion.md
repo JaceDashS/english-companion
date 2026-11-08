@@ -19,7 +19,7 @@
 ## Account Screen
 - Input: `EnglishClient`, busy and error state from `App`, and back, logout and expired callbacks.
 - Output: Account details, a My Page link, a sign-out button and a back button.
-- Code: `src/screens/AccountScreen.tsx` exports `AccountScreen`; `src/api/client.ts` `EnglishClient.account()` reads `/auth/session` and returns `Account` (`src/api/types.ts`) with `hasLocalPassword` defaulting to true when absent. `src/App.tsx` opens it from the header `open-account` button as the `account` view and reuses the existing `logout`.
+- Code: `src/screens/AccountScreen.tsx` exports `AccountScreen`; `src/api/client.ts` `EnglishClient.account()` reads `/auth/session` and returns `Account` (`src/api/types.ts`) with `hasLocalPassword` defaulting to true when absent. `src/App.tsx` opens it from the responsive shell account tab as the `account` view and reuses the existing `logout`.
 - A 401 while loading returns to the login screen with the session-ended notice.
 - Scenario: A Google-only account opens the account screen and sees "Google 전용", then signs out and lands on the login screen.
 
@@ -68,3 +68,7 @@ flowchart LR
  C --> D[Native token exchange]
  D --> E[Existing session]
 ```
+
+## Restored Presentation
+
+The common screen implementation restores responsive desktop and compact compositions and the product visual identity. Layout and theme details: [Responsive Layout](30-responsive-layout.md).

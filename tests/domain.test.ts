@@ -54,3 +54,16 @@ test("sentence order is a permutation", () => {
   assert.deepEqual([...sentenceOrder(() => 0.99)].sort(), [0, 1, 2, 3]);
   assert.deepEqual(sentenceOrder(() => 0), [1, 2, 3, 0]);
 });
+
+import { isDesktopLayout } from "../src/responsive.ts";
+
+test("responsive layout excludes landscape phones but admits wide tablets and desktop windows", () => {
+  for (const [width, height, expected] of [
+    [390, 844, false], [915, 412, false], [1280, 450, false],
+    [800, 1280, false], [1280, 800, true], [1440, 900, true],
+    [1023, 800, false], [1024, 599, false], [1024, 600, true],
+    [700, 800, false],
+  ] as const) assert.equal(isDesktopLayout(width, height), expected, `${width}x${height}`);
+  assert.equal(isDesktopLayout(1440, 900, "phone"), false);
+  assert.equal(isDesktopLayout(390, 844, "pc"), true);
+});
