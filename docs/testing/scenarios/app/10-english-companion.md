@@ -11,8 +11,8 @@
 
 ### Usage Quiz Pass
 - Input: Word "run" with four sentences; the intended sense is the bakery sentence.
-- Steps: Pick the bakery sentence and check.
-- Expected result: "정답입니다." with the correct sentence and meaning.
+- Steps: Pick the bakery sentence.
+- Expected result: The choice is graded at once: "정답입니다." with the meaning, the bakery sentence marked correct and the other choices locked.
 - Test: `tests/domain.test.ts` → "grading compares the original sentence index"; browser check.
 
 ### Memo Clears On Question Change
@@ -45,9 +45,15 @@
 - Expected result: `ContentError` for each.
 - Test: `tests/domain.test.ts` → "content parsing keeps fields and rejects invalid shapes".
 
+### Dashboard From Progress
+- Input: Unit A with words a (stage 6) and b (failed, due today), Unit B with c started and d unstarted, Unit C unstarted; account date 2026-11-09.
+- Steps: Build unit rows, the queue and stage buckets.
+- Expected result: Unit A is a review card with one due word and one wrong answer, Unit B is the single learning card, the buckets count three unstarted words, one at stage 2 and one at stage 6, and recent dates read "오늘", "어제" or "n일 전".
+- Test: `tests/domain.test.ts` → "dashboard rows map units with due reviews, the next new unit, stage buckets and recent dates".
+
 ### Account Details And Sign Out
 - Input: Signed-in Google-only account with an unverified email and no last sign-in time.
-- Steps: Press the header account button at 1280 px and 360 px, read the rows, press sign out, then reload.
+- Steps: Open the settings tab at 1280 px and 360 px, read the rows, press sign out, then reload.
 - Expected result: Name, username, "tester@example.com (인증 전)", "Google 전용" and "없음" show without horizontal scroll; sign out sends one CSRF-protected logout and the login screen stays after reload.
 - Test: `tests/api.test.ts` "account reads session details and treats a missing password flag as a password account"; mocked Edge walkthrough of the web export.
 

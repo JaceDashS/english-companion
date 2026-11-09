@@ -1,11 +1,13 @@
 # English Companion
 
 ## Study And Quiz
-- The home screen lists units with word, started and due counts, and offers a review of started words whose review date has arrived.
-- The study screen shows one word at a time with its meaning and an example sentence.
-- The quiz screen shows the word, a scratch memo field, then four sentences that all use the word. The learner chooses the sentence that uses the word in the intended sense. Sentence order is shuffled per session.
-- Only words with a usage quiz are quizzed. Results are saved only when the learner presses save on the result screen.
-- Content is empty until it is added later; the home screen then explains that no words exist yet.
+- The app follows the Japanese Companion layout: today, Unit, progress and settings tabs (top bar on PC, header and bottom tabs on phones). A unit plays the role of a Japanese Day.
+- Today shows four stats (today's review units, today's new unit, started units, words to revisit), a queue, the word count per review stage and recent units. The queue lists units with due quiz words as review cards and the first unit that still has unstarted words as a learning card.
+- The Unit tab searches units, filters to units with wrong answers and shows the learned share of each unit. The progress tab shows completed units, learned words and the average review stage.
+- A session opens full screen. Study shows one word at a time with its meaning and example (both can be hidden). The quiz shows the word, a scratch memo field, then four sentences that all use the word; choosing a sentence grades it at once and shows the meaning. Sentence order is shuffled per session. A review session from the queue quizzes only the unit's due words.
+- Only words with a usage quiz are quizzed. Results are saved only when the learner presses save on the result step.
+- Content is empty until it is added later; the screens then explain that no words exist yet.
+- Theme (dark or light) and layout mode (auto, phone, PC) are stored on the device only.
 - Design: [English Companion Design](../../design/app/10-english-companion.md#screens-and-flow)
 
 ## Quiz Scratch Memo
@@ -23,7 +25,7 @@
 - Accounts without app permission, or with a temporary password, see a message and a link to the main page.
 
 ## Account Screen
-- The home header shows the username and an account button. The account screen shows the name, username, email with its verification state, sign-in method (username and password, or Google only), join date and last sign-in. Missing values show "none".
+- The settings tab shows the account card with the name, username, email with its verification state, sign-in method (username and password, or Google only), join date and last sign-in. Missing values show "none".
 - Profile and password changes stay on the main site My Page, linked from the screen.
 - Sign out ends the platform session and returns to the login screen. On the web the other jace-s apps and the main site in the same browser are signed out too. A failed sign out keeps the session and shows a retry message.
 - Design: [Account Screen](../../design/app/10-english-companion.md#account-screen)

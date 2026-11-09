@@ -7,19 +7,21 @@
 ## Screens And Flow
 - Input: Validated units, the account progress map and the account date.
 - Output: Rendered screens; graded results passed to the save call.
-- Code: `src/App.tsx` (gate and view state), `src/screens/HomeScreen.tsx`, `StudyScreen.tsx`, `QuizScreen.tsx`, `ResultScreen.tsx`, `LoginScreen.tsx`; helpers `summarizeUnit`, `dueWords`, `quizWords`, `sentenceOrder` and `grade` in `src/domain/study.ts`.
-- Steps: `restore` → `bootstrap` (permission and clock) → `progress` → home. Study → quiz of `quizWords` → result → `saveResults` merges the returned entries into the progress map.
+- Code: `src/App.tsx` (gate, tab, session and display state), `src/screens/HomeScreen.tsx` (`HomeScreen`, `HomeTab`), `Dashboard.tsx` (`Stats`, `StageChart`, `RecentUnits`, `UnitGrid`, `ProgressPanel`, `UnitCard`), `SessionScreen.tsx` (`SessionScreen`, `SessionStart`), `SettingsScreen.tsx`, `LoginScreen.tsx`; helpers `summarizeUnit`, `dueWords`, `quizWords`, `sentenceOrder` and `grade` in `src/domain/study.ts`, and `buildUnitRows`, `buildQueue`, `stageBuckets`, `relativeDay`, `MAX_STAGE` and `STAGE_LABELS` in `src/domain/dashboard.ts`.
+- Steps: `restore` → `bootstrap` (permission and clock) → `progress` → today tab. A learning card opens a session with the unit's words in study; a review card opens a quiz-only session with the unit's due words. The last quiz answer leads to the result step → `saveResults` merges the returned entries into the progress map.
+- `buildUnitRows` derives per-unit started, due, wrong, pass ratio, graduation and latest date from the progress map; `buildQueue` takes units with due words and the first unit with unstarted words. No server data is added (D-0004 in the platform decision log).
+- Layout and parts: see [Responsive Layout](30-responsive-layout.md#presentation).
 - Scenario: Unit with two quizzed words → study both → answer both → save → home shows two started words.
 
 ## Quiz Scratch Memo
 - Input: Text typed on a quiz question.
 - Output: Nothing persisted; the value lives only in component state.
-- Code: `QuizMemo` in `src/screens/QuizScreen.tsx`, rendered with `key={word.id}` so it remounts empty whenever the question changes.
+- Code: `QuizMemo` in `src/screens/SessionScreen.tsx`, rendered with `key={word.id}` so it remounts empty whenever the question changes.
 
 ## Account Screen
 - Input: `EnglishClient`, busy and error state from `App`, and back, logout and expired callbacks.
-- Output: Account details, a My Page link, a sign-out button and a back button.
-- Code: `src/screens/AccountScreen.tsx` exports `AccountScreen`; `src/api/client.ts` `EnglishClient.account()` reads `/auth/session` and returns `Account` (`src/api/types.ts`) with `hasLocalPassword` defaulting to true when absent. `src/App.tsx` opens it from the responsive shell account tab as the `account` view and reuses the existing `logout`.
+- Output: Account details, a My Page link, a sign-out button and display settings.
+- Code: `src/screens/SettingsScreen.tsx` exports `SettingsScreen`; `src/api/client.ts` `EnglishClient.account()` reads `/auth/session` and returns `Account` (`src/api/types.ts`) with `hasLocalPassword` defaulting to true when absent. `src/App.tsx` shows it as the settings tab and reuses the existing `logout`. `src/display.ts` exports `Display`, `DEFAULT_DISPLAY`, `parseDisplay`, `readDisplay` and `writeDisplay`, keeping theme and layout mode in browser storage or secure storage on Android.
 - A 401 while loading returns to the login screen with the session-ended notice.
 - Scenario: A Google-only account opens the account screen and sees "Google 전용", then signs out and lands on the login screen.
 

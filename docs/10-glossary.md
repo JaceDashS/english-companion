@@ -26,8 +26,13 @@
 - Code: `Transport`, `src/api/transport.ts`, `src/api/transport.web.ts`
 
 ## Account Screen
-- Definition: The screen opened from the home header that shows the signed-in platform account and signs out
-- Code: `AccountScreen`, `EnglishClient.account`, `Account`
+- Definition: The account card on the settings tab that shows the signed-in platform account and signs out
+- Code: `SettingsScreen`, `EnglishClient.account`, `Account`
+
+## Unit Row
+- Definition: Per-unit study summary used by the dashboard; a unit plays the role of a Japanese Companion Day
+- Code: `UnitRow`, `buildUnitRows`, `buildQueue` (`src/domain/dashboard.ts`)
+- Avoid: calling it "Day" in English Companion screens; use "Unit"
 - Avoid: "My Page", which is the main site page where profile changes happen
 
 ## Native Google Challenge

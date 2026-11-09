@@ -1,24 +1,59 @@
-import React from "react";
-import { Pressable, Text, View } from "react-native";
-import { colors } from "./ui";
+import React, { useContext, useState } from "react";
+import { Pressable, View } from "react-native";
+import { fonts, T, Theme } from "./ui";
 
-/** One responsive shell for browser and Android, with compact bottom navigation. */
-export function Chrome({ desktop, account, onHome, onAccount, username, children }: {
-  desktop: boolean; account: boolean; onHome: () => void; onAccount: () => void; username: string; children: React.ReactNode;
+export type Tab = "today" | "days" | "progress" | "settings";
+const tabs = [
+  { key: "today", title: "오늘", heading: "오늘 할 학습", icon: "◐" },
+  { key: "days", title: "Unit", heading: "Unit 선택", icon: "▤" },
+  { key: "progress", title: "진행", heading: "전체 진행률", icon: "◫" },
+  { key: "settings", title: "설정", heading: "설정", icon: "⚙" },
+] as const;
+
+function BrandMark() {
+  const c = useContext(Theme);
+  return <View style={{ width: 30, height: 30, borderRadius: 9, backgroundColor: c.soft, alignItems: "center", justifyContent: "center" }}><T size={15} serif weight="700" style={{ color: c.accent, lineHeight: 20 }}>Aa</T></View>;
+}
+
+function TopTab({ title, active, onPress }: { title: string; active: boolean; onPress: () => void }) {
+  const c = useContext(Theme);
+  const [hover, setHover] = useState(false);
+  return <Pressable accessibilityRole="tab" aria-selected={active} accessibilityState={{ selected: active }} accessibilityLabel={title} onPress={onPress} onHoverIn={() => setHover(true)} onHoverOut={() => setHover(false)}
+    style={{ paddingVertical: 7, paddingHorizontal: 14, borderRadius: 11, borderWidth: 1, borderColor: active ? c.accentLine : "transparent", backgroundColor: active ? c.soft : "transparent" }}>
+    <T size={13.8} weight="600" style={{ color: active ? c.accentStrong : hover ? c.text : c.muted }}>{title}</T>
+  </Pressable>;
+}
+
+/** PC top bar with the due count, phone header with bottom tab bar and due badge, following the Japanese Companion shell. */
+export function Chrome({ desktop, tab, today, dueCount, onNavigate, children }: {
+  desktop: boolean; tab: Tab; today: string; dueCount: number; onNavigate: (tab: Tab) => void; children: React.ReactNode;
 }) {
-  const navigation = <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: 8 }}>
-    {[{ title: "오늘의 학습", icon: "◐", selected: !account, onPress: onHome }, { title: "계정", icon: "⚙", selected: account, onPress: onAccount }].map(item => <Pressable key={item.title} accessibilityRole="tab" aria-selected={item.selected} accessibilityState={{ selected: item.selected }} accessibilityLabel={item.title} onPress={item.onPress} style={({ pressed }) => ({ flex: desktop ? undefined : 1, minHeight: 48, paddingHorizontal: 20, borderRadius: 12, backgroundColor: item.selected ? colors.accentSoft : "transparent", justifyContent: "center", alignItems: "center", gap: 2, opacity: pressed ? 0.7 : 1 })}>
-      {!desktop && <Text style={{ color: item.selected ? colors.accent : colors.muted, fontSize: 20 }}>{item.icon}</Text>}
-      <Text style={{ color: item.selected ? colors.accent : colors.muted, fontWeight: "600", fontSize: desktop ? 14 : 12 }}>{item.title}</Text>
-    </Pressable>)}
-  </View>;
+  const c = useContext(Theme);
+  const current = tabs.find(item => item.key === tab) ?? tabs[0];
   return <View style={{ flex: 1 }}>
-    <View style={{ minHeight: 76, paddingHorizontal: desktop ? 28 : 18, gap: 20, flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderColor: colors.line, backgroundColor: colors.surface }}>
-      <View style={{ backgroundColor: colors.accentSoft, width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 12 }}><Text style={{ color: colors.accent, fontWeight: "800", fontSize: 19 }}>Aa</Text></View>
-      <View style={{ flex: desktop ? undefined : 1 }}><Text style={{ color: colors.text, fontSize: 17, fontWeight: "700" }}>English Companion</Text>{!desktop && <Text style={{ color: colors.muted, fontSize: 12, marginTop: 3 }}>Words into practice</Text>}</View>
-      {desktop && <>{navigation}<Text style={{ color: colors.muted, marginLeft: "auto", fontSize: 13 }}>{username}</Text></>}
-    </View>
+    {desktop ? <View accessibilityRole="header" style={{ height: 56, flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 20, borderBottomWidth: 1, borderColor: c.border, backgroundColor: c.header }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}><BrandMark /><T size={15.2} weight="700">English Companion</T></View>
+      <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: 2 }}>
+        {tabs.map(item => <TopTab key={item.key} active={tab === item.key} onPress={() => onNavigate(item.key)} title={item.title + (item.key === "today" && dueCount > 0 ? ` · ${dueCount}` : "")} />)}
+      </View>
+      <T size={12.2} tone="dim" style={{ marginLeft: "auto" }}>{today}</T>
+    </View> : <View accessibilityRole="header" style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderColor: c.borderSoft, backgroundColor: c.bg }}>
+      <BrandMark />
+      <View style={{ minWidth: 0, flex: 1 }}><T size={16} weight="700" numberOfLines={1}>{current.heading}</T><T size={11.5} tone="dim">{today}</T></View>
+    </View>}
     <View style={{ flex: 1, minHeight: 0 }}>{children}</View>
-    {!desktop && <View style={{ padding: 6, borderTopWidth: 1, borderColor: colors.line, backgroundColor: colors.surface }}>{navigation}</View>}
+    {!desktop && <View accessibilityRole="tablist" style={{ height: 58, flexDirection: "row", borderTopWidth: 1, borderColor: c.border, backgroundColor: c.header }}>
+      {tabs.map(item => {
+        const active = tab === item.key;
+        return <Pressable key={item.key} accessibilityRole="tab" aria-selected={active} accessibilityLabel={item.title} accessibilityState={{ selected: active }} onPress={() => onNavigate(item.key)}
+          style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 2, paddingVertical: 6 }}>
+          <View>
+            <T size={18} style={{ color: active ? c.accent : c.dim, lineHeight: 20, fontFamily: fonts.sans }}>{item.icon}</T>
+            {item.key === "today" && dueCount > 0 && <View style={{ position: "absolute", left: 12, top: -8, minWidth: 16, height: 16, paddingHorizontal: 4, borderRadius: 999, backgroundColor: c.accent, alignItems: "center", justifyContent: "center" }}><T size={9.9} weight="800" style={{ color: c.onAccent, lineHeight: 12 }}>{dueCount}</T></View>}
+          </View>
+          <T size={10.9} weight="600" style={{ color: active ? c.accent : c.dim, lineHeight: 14 }}>{item.title}</T>
+        </Pressable>;
+      })}
+    </View>}
   </View>;
 }

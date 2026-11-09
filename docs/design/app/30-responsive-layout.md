@@ -13,9 +13,11 @@
 ## Presentation
 - Inputs: Active tab, navigation callbacks, current account date, existing dashboard data and theme.
 - Output: Accessible selected tabs, desktop navigation and dashboard columns, compact mobile navigation, themed cards and real progress counts.
-- Code: `src/` modules `Chrome.tsx, ui.tsx, screens/HomeScreen.tsx`. `Chrome` renders navigation without owning account or study state; HomeScreen consumes the existing study model. Theme primitives style existing settings, study and quiz screens too.
-- English HomeScreen retains its empty-content state and never invents vocabulary or progress; its meter clamps the displayed percentage. English `Chrome` switches between home and account using the existing view state.
-- All backgrounds are opaque native colors; no document-sized repeated background image is used.
+- Code: `src/` modules `Chrome.tsx, ui.tsx, screens/Dashboard.tsx, screens/HomeScreen.tsx, screens/SessionScreen.tsx`. `Chrome` renders navigation without owning account or study state.
+- The parts are copies of the Japanese Companion parts (`ui.tsx`: `T`, `Card`, `Btn`, `Action`, `Chip`, `Meter`, `Switch`, `CopyId`, `Segment`, `Input`, `Field`, `Empty`, `Spinner`, `Sheet`, `Toast`, plus `Theme`, `Device`, `palettes`, `fonts`, `gradient`, `layout`); each product keeps its own copy. Older `colors` and `styles` remain for the Google button and notices.
+- Library palette: dark `#0f1513` background, `#16201c` panels, brass `#d9b45a` accent, ivy `#6fbf8e` for passes, sky `#7fb3d9` for reviews and `#e57b6e` for failures; light uses parchment `#f5f1e6` with `#8a6a1c`. Words and sentences use a serif face.
+- `Chrome` shows the "Aa" brand mark, the today, Unit, progress and settings tabs and the due-unit count. The screens keep the empty-content state and never invent vocabulary or progress.
+- The root view paints one radial brass glow sized to the viewport, so it never repeats while scrolling.
 
 ## Representative Scenario
 - Input: Home at 1280 by 800, followed by 915 by 412.
@@ -26,7 +28,7 @@
 flowchart LR
     A[Available dimensions and preference] --> B{Desktop policy satisfied}
     B -- Yes --> C[Desktop navigation and columns]
-    B -- No --> D[Compact header and bottom tabs]
+    B -- No --> D[Phone header and bottom tabs]
     C --> E[Existing account and study model]
     D --> E
 ```

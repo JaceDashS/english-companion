@@ -14,6 +14,12 @@
 - Expected result: Manual preferences override automatic detection where the product exposes the setting.
 - Test: The same boundary regression verifies explicit policy overrides.
 
+## Japanese Layout With Library Palette
+- Input: Temporary preview content (six units of six words, not committed) and seeded progress on a synthetic API.
+- Steps: Capture today, Unit, study, quiz, settings and the light theme at 1440x900 and 390x844, next to the Japanese Companion captures.
+- Expected result: The same layout and parts as Japanese Companion with the brass, ivy and sky palette.
+- Observed 2026-11-09: Matched; review cards opened quiz-only sessions, choices graded at once and the light theme switched to parchment.
+
 ## Resize And Study
 - Input: An authenticated test account with sample content, desktop and compact viewports.
 - Steps: Navigate home and settings, begin study, resize or rotate, use the existing quiz and return controls, and scroll to the bottom.

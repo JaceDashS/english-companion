@@ -3,6 +3,7 @@ import test from "node:test";
 import { ContentError, parseContent } from "../src/content/content.ts";
 import raw from "../src/content/words.json" with { type: "json" };
 import { dueWords, grade, quizWords, sentenceOrder, summarizeUnit } from "../src/domain/study.ts";
+import { buildQueue, buildUnitRows, relativeDay, stageBuckets } from "../src/domain/dashboard.ts";
 
 const word = (id: string, quiz = true) => ({
   id,
@@ -66,4 +67,27 @@ test("responsive layout excludes landscape phones but admits wide tablets and de
   ] as const) assert.equal(isDesktopLayout(width, height), expected, `${width}x${height}`);
   assert.equal(isDesktopLayout(1440, 900, "phone"), false);
   assert.equal(isDesktopLayout(390, 844, "pc"), true);
+});
+
+test("dashboard rows map units with due reviews, the next new unit, stage buckets and recent dates", () => {
+  const units = parseContent({ version: 1, units: [
+    { id: "u1", title: "Unit A", words: [word("a"), word("b")] },
+    { id: "u2", title: "Unit B", words: [word("c"), word("d")] },
+    { id: "u3", title: "Unit C", words: [word("e")] },
+  ] });
+  const progress = {
+    a: { stage: 6, due: "2026-12-01", lastResult: "PASS" as const, updatedAt: "2026-11-07T01:00:00Z" },
+    b: { stage: 0, due: "2026-11-09", lastResult: "FAIL" as const, updatedAt: "2026-11-08T01:00:00Z" },
+    c: { stage: 2, due: "2026-11-10", lastResult: "PASS" as const, updatedAt: "2026-11-05T01:00:00Z" },
+  };
+  const rows = buildUnitRows(units, progress, "2026-11-09");
+  assert.deepEqual(rows.map((row) => [row.started, row.dueWords.map((w) => w.id), row.failCount, row.lastDate]), [
+    [2, ["b"], 1, "2026-11-08"], [1, [], 0, "2026-11-05"], [0, [], 0, ""],
+  ]);
+  assert.equal(rows[0].passRatio, 0.5);
+  const queue = buildQueue(rows);
+  assert.deepEqual(queue.reviews.map((row) => row.unit.id), ["u1"]);
+  assert.deepEqual(queue.learning.map((row) => row.unit.id), ["u2"]);
+  assert.deepEqual(stageBuckets(units, progress).map((bucket) => bucket.count), [3, 0, 1, 0, 0, 0, 1]);
+  assert.deepEqual(["2026-11-09", "2026-11-08", "2026-11-01"].map((date) => relativeDay(date, "2026-11-09")), ["오늘", "어제", "8일 전"]);
 });
