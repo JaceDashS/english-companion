@@ -1,7 +1,8 @@
 import React from "react";
 import { ScrollView, View } from "react-native";
 import type { Progress } from "../api/types";
-import type { EnglishUnit } from "../content/content";
+import type { EnglishBook, EnglishUnit } from "../content/content";
+import { BookSelect } from "../BookSelect";
 import { buildQueue, buildUnitRows, stageBuckets, type UnitRow } from "../domain/dashboard";
 import { Card, Empty, layout, T } from "../ui";
 import { ProgressPanel, RecentUnits, StageChart, Stats, UnitCard, UnitGrid } from "./Dashboard";
@@ -9,12 +10,14 @@ import { ProgressPanel, RecentUnits, StageChart, Stats, UnitCard, UnitGrid } fro
 export type HomeTab = "today" | "days" | "progress";
 
 /** Today, Unit and progress tabs in the Japanese Companion composition, built from bundled units and account progress. */
-export function HomeScreen({ units, progress, today, desktop, tab, onStudy, onReview }: {
-  units: EnglishUnit[]; progress: Progress; today: string; desktop: boolean; tab: HomeTab;
+export function HomeScreen({ books, bookId, onBookChange, units, progress, today, desktop, tab, onStudy, onReview }: {
+  books: EnglishBook[]; bookId: string; onBookChange: (id: string) => void; units: EnglishUnit[]; progress: Progress; today: string; desktop: boolean; tab: HomeTab;
   onStudy: (row: UnitRow) => void; onReview: (row: UnitRow) => void;
 }) {
   const phone = !desktop;
-  const rows = buildUnitRows(units, progress, today);
+  const selectedBook = books.find(book => book.id === bookId) ?? books[0];
+  const visibleUnits = phone ? selectedBook?.units ?? [] : units;
+  const rows = buildUnitRows(visibleUnits, progress, today);
   const { reviews, learning } = buildQueue(rows);
   const failTotal = rows.reduce((sum, row) => sum + row.failCount, 0);
   const queue = <View style={{ gap: 10 }}>
@@ -28,7 +31,7 @@ export function HomeScreen({ units, progress, today, desktop, tab, onStudy, onRe
     { accent: "accent", label: "시작한 Unit", value: `${rows.filter(row => row.started > 0).length}/${rows.length}`, hint: `졸업 ${rows.filter(row => row.graduated).length}개` },
     { accent: "warn", label: "다시 볼 단어", value: `${failTotal}개`, hint: failTotal ? "복습에서 다시 나옵니다" : "오답 없음" },
   ]} />;
-  const chart = <StageChart stages={stageBuckets(units, progress)} />;
+  const chart = <StageChart stages={stageBuckets(visibleUnits, progress)} />;
   const recent = <RecentUnits rows={rows} today={today} onOpen={onStudy} />;
   const wordCount = rows.reduce((sum, row) => sum + row.total, 0);
 
@@ -53,5 +56,7 @@ export function HomeScreen({ units, progress, today, desktop, tab, onStudy, onRe
       </View>
     </View>
   </>;
-  return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={phone ? layout.phoneBody : layout.body}>{content}</ScrollView>;
+  return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={phone ? layout.phoneBody : layout.body}>
+    {phone && <BookSelect books={books} value={selectedBook?.id ?? ""} onChange={onBookChange} />}{content}
+  </ScrollView>;
 }

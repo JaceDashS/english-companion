@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ContentError, parseContent } from "../src/content/content.ts";
+import { ContentError, parseBooks, parseContent } from "../src/content/content.ts";
 import raw from "../src/content/words.json" with { type: "json" };
 import { dueWords, grade, quizWords, sentenceOrder, summarizeUnit } from "../src/domain/study.ts";
 import { buildQueue, buildUnitRows, relativeDay, stageBuckets } from "../src/domain/dashboard.ts";
@@ -15,6 +15,33 @@ const word = (id: string, quiz = true) => ({
 
 test("bundled content is valid and starts empty", () => {
   assert.deepEqual(parseContent(raw), []);
+});
+
+test("books group units without changing legacy word IDs or progress lookup", () => {
+  const unit = { id: "unit-1", title: "Unit 1", words: [word("run")] };
+  const legacy = parseBooks({ version: 1, units: [unit] });
+  assert.equal(legacy[0].id, "default");
+  const raw = { version: 1, books: [
+    { id: "first", title: "첫 교재", units: [unit] },
+    { id: "second", title: "다른 교재", units: [{ id: "unit-2", title: "Unit 2", words: [word("set")] }] },
+  ] };
+  const books = parseBooks(raw);
+  assert.deepEqual(books.map(book => book.units.map(unit => unit.words[0].id)), [["run"], ["set"]]);
+  assert.deepEqual(parseContent(raw).map(unit => unit.id), ["unit-1", "unit-2"]);
+  const progress = { run: { stage: 2, due: "2026-11-10", lastResult: "PASS" as const, updatedAt: "" } };
+  assert.equal(buildUnitRows(books[0].units, progress, "2026-11-10")[0].started, 1);
+  assert.equal(buildUnitRows(books[1].units, progress, "2026-11-10")[0].started, 0);
+});
+
+test("book catalogs reject duplicate identities and ambiguous or malformed shapes", () => {
+  const book = { id: "book", title: "Book", units: [{ id: "u", title: "Unit", words: [word("run")] }] };
+  for (const books of [null, [book, book], [{ ...book, id: "Bad ID" }], [{ ...book, title: " " }], [{ ...book, units: null }],
+    [book, { ...book, id: "second" }],
+    [book, { id: "second", title: "Second", units: [{ id: "u2", title: "Unit 2", words: [word("run")] }] }]]) {
+    assert.throws(() => parseBooks({ version: 1, books }), ContentError);
+  }
+  assert.throws(() => parseBooks({ version: 1, books: [], units: [] }), ContentError);
+  assert.deepEqual(parseBooks({ version: 1, books: [] }), []);
 });
 
 test("content parsing keeps fields and rejects invalid shapes", () => {

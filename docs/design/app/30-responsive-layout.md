@@ -19,6 +19,21 @@
 - `Chrome` shows the "Aa" brand mark, the today, Unit, progress and settings tabs and the due-unit count. The screens keep the empty-content state and never invent vocabulary or progress.
 - The root view paints one radial brass glow sized to the viewport, so it never repeats while scrolling.
 
+## Mobile Book Selection
+- Input: `EnglishBook[]`, selected book ID and onBookChange from App, and desktop layout state.
+- Output: A mobile-only full-width selector above today, Unit and progress; desktop controls and all-unit presentation stay unchanged.
+- Code: `src/BookSelect.tsx` exports `BookSelect`, using a labelled native HTML select on web and the existing themed Sheet with radio options on Android. Minimum control and option touch height is 44 pixels; empty lists disable selection. `src/screens/HomeScreen.tsx` renders it only when desktop is false.
+- Scenario: At 390x844 choose the second book. Steps: Update App selection and rebuild dashboard rows from that book's units. Expected result: Its Unit list and totals appear; resizing to 1440x900 restores the original all-unit desktop view with no dropdown.
+- All scenarios: [Mobile Book Dropdown](../../testing/scenarios/app/30-responsive-layout.md#mobile-book-dropdown).
+
+```mermaid
+flowchart LR
+    B[Validated book catalog] --> M[Mobile selected book units]
+    B --> D[Desktop all units]
+    M --> P[Existing word ID progress]
+    D --> P
+```
+
 ## Representative Scenario
 - Input: Home at 1280 by 800, followed by 915 by 412.
 - Steps: Read dimensions, evaluate the policy, reflow the existing components.

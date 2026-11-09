@@ -1,4 +1,6 @@
 {
   "version": 1,
-  "units": []
+  "books": [
+    { "id": "default", "title": "기본 교재", "units": [] }
+  ]
 }

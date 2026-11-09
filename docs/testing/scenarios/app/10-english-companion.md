@@ -45,6 +45,12 @@
 - Expected result: `ContentError` for each.
 - Test: `tests/domain.test.ts` → "content parsing keeps fields and rejects invalid shapes".
 
+### Book Catalog Compatibility
+- Input: Legacy flat units and a two-book catalog containing run and set with existing per-word progress; also malformed books, duplicate IDs and simultaneous books and units fields.
+- Steps: Parse each catalog, flatten for desktop, build mobile rows for each book and look up the unchanged word IDs.
+- Expected result: Legacy content becomes the default book, desktop preserves content order, selected-book rows remain isolated and existing progress is retained. Duplicate identities, blank book titles and ambiguous or malformed shapes throw ContentError.
+- Test: `tests/domain.test.ts` cases "books group units without changing legacy word IDs or progress lookup" and "book catalogs reject duplicate identities and ambiguous or malformed shapes".
+
 ### Dashboard From Progress
 - Input: Unit A with words a (stage 6) and b (failed, due today), Unit B with c started and d unstarted, Unit C unstarted; account date 2026-11-09.
 - Steps: Build unit rows, the queue and stage buckets.

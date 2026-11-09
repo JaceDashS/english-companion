@@ -6,11 +6,13 @@
 ## Add Content
 Edit `src/content/words.json`. Keep word IDs stable after release, because progress is stored by ID.
 
+Group units under named books. Keep book and Unit IDs unique across the catalog too. Mobile selects one book; PC continues showing all units. Legacy flat units remain accepted as the default book, but do not supply books and units at the same top level.
+
 ```json
-{ "version": 1, "units": [{ "id": "unit-1", "title": "Unit 1", "words": [
+{ "version": 1, "books": [{ "id": "basic", "title": "Basic English", "units": [{ "id": "unit-1", "title": "Unit 1", "words": [
   { "id": "run", "word": "run", "meaning": "달리다; 운영하다", "example": "She runs a small bakery.",
     "quiz": { "sentences": ["He runs every morning.", "She runs a small bakery.", "The river runs through the city.", "My nose is running."], "answer": 1 } }
-] }] }
+] }] }] }
 ```
 
 Run `npm test` afterwards; invalid content fails "bundled content is valid and starts empty" with the invalid path.

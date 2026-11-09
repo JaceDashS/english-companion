@@ -6,6 +6,7 @@
 - Restore Japanese ink and sakura colors, desktop top navigation, dashboard columns and phone bottom tabs. Restore Certificate midnight and orange colors, desktop rail and phone bottom tabs. English uses the Japanese layout and parts with its own Library palette: deep green-black with brass, ivy and sky accents, and a parchment light theme.
 - Keep navigation, account actions, study, quizzes, source writes and saved progress functional. Rotation and window resizing must not reset study state.
 - Background colors cover the viewport and scrolling content without a repeating gradient or visible rectangular seam.
+- Only mobile forms add a book dropdown above today, Unit and progress. Desktop keeps its existing controls and complete Unit list. Resizing back to mobile retains the selected book during the current signed-in app session.
 - Design: [Responsive Layout](../../design/app/30-responsive-layout.md)
 
 ## Example

@@ -26,9 +26,12 @@
 - Scenario: A Google-only account opens the account screen and sees "Google 전용", then signs out and lands on the login screen.
 
 ## Content
-- Input: `src/content/words.json` (`{version: 1, units: [...]}`).
-- Output: `EnglishUnit[]`, or a `ContentError` naming the invalid path.
-- Code: `parseContent` in `src/content/content.ts`. Word IDs match `^[a-z0-9][a-z0-9-]{0,63}$` and are unique across units; a quiz has exactly four sentences and an `answer` index from 0 to 3.
+- Input: `src/content/words.json` with `{version: 1, books: [{id, title, units}]}` or legacy `{version: 1, units: [...]}`. Supplying both fields is rejected.
+- Output: `EnglishBook[]` from `parseBooks`, or the same ordered flattened `EnglishUnit[]` from compatibility export `parseContent`; invalid content throws ContentError.
+- Code: `src/content/content.ts` exports `EnglishBook`, `parseBooks` and `parseContent`. Legacy units become book default with title 기본 교재 without rewriting any Unit or word ID. Book, unit and word IDs are globally unique within their respective kinds; titles must be nonempty for books, and quizzes retain four sentences and answer indices 0 to 3.
+- `src/App.tsx` owns book selection for the signed-in app session and resets it on logout or account change. `src/screens/HomeScreen.tsx` filters mobile views to that book; desktop consumes all units exactly as before. The mobile due badge uses the same selected units. Selection is not persisted across a full reload and never changes the progress API contract.
+- Example input: Two books containing existing run and set word IDs. Steps: Select the second book on mobile, open study, return, then resize to desktop. Expected result: Mobile retains its second-book scope and existing word progress; desktop lists both books' units with no new selector.
+- All scenarios: [Book Catalog Compatibility](../../testing/scenarios/app/10-english-companion.md#book-catalog-compatibility).
 
 ## Progress And API
 - Input: Graded results `{id, result}`.

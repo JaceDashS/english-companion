@@ -2,7 +2,12 @@
 
 ## Unit
 - Definition: An ordered group of words studied together
-- Code: `EnglishUnit`, `units[]` in `src/content/words.json`
+- Code: `EnglishUnit`, `books[].units[]` in `src/content/words.json`; legacy `units[]` is also accepted
+
+## Book
+- Definition: A named group of English units selectable in mobile forms. Desktop keeps the full unit list.
+- Code: `EnglishBook`, `parseBooks`, `BookSelect`
+- Notes: Book selection does not namespace or rewrite the word IDs used by account progress.
 
 ## Word
 - Definition: A study entry with the word, its meaning, an example sentence and an optional usage quiz. Its ID is the key for account progress and must not change after publication
