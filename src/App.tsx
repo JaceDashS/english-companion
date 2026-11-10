@@ -17,6 +17,7 @@ import { SettingsScreen } from "./screens/SettingsScreen";
 import { Btn, Card, Device, gradient, layout, palettes, T, Theme } from "./ui";
 import { Chrome, type Tab } from "./Chrome";
 import { isDesktopLayout } from "./responsive";
+import { BrowserTheme } from "./BrowserTheme";
 
 const BOOKS = parseBooks(rawContent);
 const UNITS = BOOKS.flatMap(book => book.units);
@@ -120,7 +121,7 @@ export default function App() {
         onReview={(row) => setSession({ title: row.unit.title + " 복습", words: row.dueWords, review: true })} />}
   </Chrome>;
 
-  return <SafeAreaProvider><Theme.Provider value={c}><Device.Provider value={{ phone: !desktop }}>
+  return <SafeAreaProvider><Theme.Provider value={c}><Device.Provider value={{ phone: !desktop }}><BrowserTheme scheme={display.theme} />
     <StatusBar style={display.theme === "light" ? "dark" : "light"} />
     <SafeAreaView style={[{ flex: 1, backgroundColor: c.bg }, gradient(`radial-gradient(900px 480px at 85% -10%, ${c.glow}, transparent 70%)`)]}>
       <Notices />

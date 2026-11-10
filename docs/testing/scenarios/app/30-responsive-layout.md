@@ -33,3 +33,9 @@
 - Expected result: Mobile shows only Second Book Unit with no horizontal overflow. Desktop has no dropdown and lists both units. Selection survives tab and study navigation through App state, but resets after logout, account change or full reload.
 - Verified 2026-11-10: A local harness using the actual BookSelect and HomeScreen switched from First Book Unit to Second Book Unit. Page width remained 390 pixels with the long title. At 1440x900 there were zero selects and both original Unit cards. Account persistence, authenticated navigation and physical Android behavior were not exercised by this harness.
 - Validation: Type checking, 24 regressions including catalog compatibility and identity checks, and web and Android JavaScript exports passed. Android export required running outside the Windows sandbox after Hermes compilation failed within it; no code change was needed for that retry.
+
+## Themed Browser Controls
+- Input: Actual BookSelect and BrowserTheme components in a local browser harness, both product palettes and dark and light schemes.
+- Steps: Read select arrow position and padding, switch the theme, and inspect computed scrollbar colors on an overflowing nested panel.
+- Expected result: Chevron position is right 14px center, right padding is 40px, and the thumb and track use the active dim and panel tokens. Color scheme changes with the theme; select interaction remains native and desktop composition is unchanged.
+- Verified 2026-11-10: Both products' dark and light computed scrollbar colors matched their palette, with the expected arrow position and padding. Type checks passed. Operating-system popup appearance and physical Android rendering were not validated.

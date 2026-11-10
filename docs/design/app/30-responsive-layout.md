@@ -47,3 +47,12 @@ flowchart LR
     C --> E[Existing account and study model]
     D --> E
 ```
+
+## Browser Control Theme
+- Input: Active palette and explicit dark or light scheme from App.
+- Output: Theme-colored thin browser scrollbars and matching native browser control colors, with unchanged screen composition.
+- Code: `src/BrowserTheme.tsx` exports BrowserTheme beside `src/BookSelect.tsx`. App mounts it within the active Theme provider; it renders browser-only CSS and returns null on native platforms. Japanese signed-out screens use the default dark palette.
+- Scrollbar thumb uses dim, track uses panel, and hover uses muted. Standard scrollbar properties and WebKit fallback rules cover the supported browser renderers; operating-system popup menus remain browser-managed.
+- BookSelect keeps the actual select element, hides its edge-bound default arrow and paints an encoded theme-colored SVG chevron at right 14px center. Right padding is 40px; native selection sheets are unchanged.
+- Example input: Change dark to light while a long book title is selected. Steps: Re-render BrowserTheme with the current palette. Expected result: Browser control and scrollbar colors update immediately, and the inset arrow leaves room for the title.
+- Scenarios: [Themed Browser Controls](../../testing/scenarios/app/30-responsive-layout.md#themed-browser-controls).
