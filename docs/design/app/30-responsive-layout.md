@@ -16,7 +16,7 @@
 - Code: `src/` modules `Chrome.tsx, ui.tsx, screens/Dashboard.tsx, screens/HomeScreen.tsx, screens/SessionScreen.tsx`. `Chrome` renders navigation without owning account or study state.
 - The parts are copies of the Japanese Companion parts (`ui.tsx`: `T`, `Card`, `Btn`, `Action`, `Chip`, `Meter`, `Switch`, `CopyId`, `Segment`, `Input`, `Field`, `Empty`, `Spinner`, `Sheet`, `Toast`, plus `Theme`, `Device`, `palettes`, `fonts`, `gradient`, `layout`); each product keeps its own copy. Older `colors` and `styles` remain for the Google button and notices.
 - Library palette: dark `#0f1513` background, `#16201c` panels, brass `#d9b45a` accent, ivy `#6fbf8e` for passes, sky `#7fb3d9` for reviews and `#e57b6e` for failures; light uses parchment `#f5f1e6` with `#8a6a1c`. Words and sentences use a serif face.
-- `Chrome` shows the "Aa" brand mark, the today, Unit, progress and settings tabs and the due-unit count. The screens keep the empty-content state and never invent vocabulary or progress.
+- `Chrome` shows the product app icon, the today, Unit, progress and settings tabs and the due-unit count. The screens keep the empty-content state and never invent vocabulary or progress.
 - The root view paints one radial brass glow sized to the viewport, so it never repeats while scrolling.
 
 ## Mobile Book Selection
@@ -56,3 +56,10 @@ flowchart LR
 - BookSelect keeps the actual select element, hides its edge-bound default arrow and paints an encoded theme-colored SVG chevron at right 14px center. Right padding is 40px; native selection sheets are unchanged.
 - Example input: Change dark to light while a long book title is selected. Steps: Re-render BrowserTheme with the current palette. Expected result: Browser control and scrollbar colors update immediately, and the inset arrow leaves room for the title.
 - Scenarios: [Themed Browser Controls](../../testing/scenarios/app/30-responsive-layout.md#themed-browser-controls).
+
+## Product Brand Icon
+
+- Input: Product-owned `assets/icon.png` and the active desktop or compact layout.
+- Output: The app icon in the existing brand position without a separate colored tile.
+- Code: `src/Chrome.tsx` uses React Native Image with a static require, contain sizing, an accessible product label and flexShrink zero. Japanese and English use 30px; Certificate uses 34px. The existing image is also configured for the native app and web favicon.
+- Scenario: Open the desktop study home, then resize to compact; both compositions retain the same product icon and navigation state.
