@@ -77,3 +77,7 @@ flowchart LR
 ## Restored Presentation
 
 The common screen implementation restores responsive desktop and compact compositions and the product visual identity. Layout and theme details: [Responsive Layout](30-responsive-layout.md).
+
+## Reading Extension
+
+Books and persistent personal word notes are described in [Reading Books](40-reading-books.md). Existing textbook study keeps its behavior.

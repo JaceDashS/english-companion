@@ -1,3 +1,5 @@
+import { ReadingLibrary } from "../ReadingLibrary";
+import type { LibraryApi } from "../readingWords";
 import React from "react";
 import { ScrollView, View } from "react-native";
 import type { Progress } from "../api/types";
@@ -10,8 +12,8 @@ import { ProgressPanel, RecentUnits, StageChart, Stats, UnitCard, UnitGrid } fro
 export type HomeTab = "today" | "days" | "progress";
 
 /** Today, Unit and progress tabs in the Japanese Companion composition, built from bundled units and account progress. */
-export function HomeScreen({ books, bookId, onBookChange, units, progress, today, desktop, tab, onStudy, onReview }: {
-  books: EnglishBook[]; bookId: string; onBookChange: (id: string) => void; units: EnglishUnit[]; progress: Progress; today: string; desktop: boolean; tab: HomeTab;
+export function HomeScreen({ libraryApi, onLibraryChanged, books, bookId, onBookChange, units, progress, today, desktop, tab, onStudy, onReview }: {
+  libraryApi: LibraryApi; onLibraryChanged: () => void; books: EnglishBook[]; bookId: string; onBookChange: (id: string) => void; units: EnglishUnit[]; progress: Progress; today: string; desktop: boolean; tab: HomeTab;
   onStudy: (row: UnitRow) => void; onReview: (row: UnitRow) => void;
 }) {
   const phone = !desktop;
@@ -57,6 +59,6 @@ export function HomeScreen({ books, bookId, onBookChange, units, progress, today
     </View>
   </>;
   return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={phone ? layout.phoneBody : layout.body}>
-    {phone && <BookSelect books={books} value={selectedBook?.id ?? ""} onChange={onBookChange} />}{content}
+    <ReadingLibrary api={libraryApi} language="en" allowVocabulary onChanged={onLibraryChanged} />{phone && <BookSelect books={books} value={selectedBook?.id ?? ""} onChange={onBookChange} />}{content}
   </ScrollView>;
 }

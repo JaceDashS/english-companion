@@ -1,7 +1,7 @@
 import { APP_KEY } from "../config";
 import { ApiError, type Account, type Clock, type Progress, type StudyResult, type Transport, type User } from "./types";
 
-/** Account and progress API used by every screen. Requests run one at a time so session updates never race. */
+/** Account, progress and reading API used by every screen. Requests run one at a time so session updates never race. */
 export class EnglishClient {
   private tail: Promise<unknown> = Promise.resolve();
   private user: User | null = null;
@@ -126,6 +126,16 @@ export class EnglishClient {
     return this.serialize(async () => {
       if (!this.user) throw new ApiError(401, "UNAUTHENTICATED");
       return (await this.call<{ progress: Progress }>("/companions/english/save-results", { results }, this.user.id)).progress;
+    });
+  }
+  /** Account-scoped books, word lookups and unique notes over the existing serialized transport. */
+  libraryRequest<T>(endpoint: string, body?: unknown, query?: Record<string, string>): Promise<T> {
+    if (!["library", "library/save", "word", "word-note"].includes(endpoint)) return Promise.reject(new Error("Invalid library route"));
+    const account = this.user?.id;
+    return this.serialize(async () => {
+      if (!account || account !== this.user?.id) throw new ApiError(401, "SESSION_EXPIRED");
+      const suffix = query ? "?" + new URLSearchParams(query).toString() : "";
+      return this.call<T>("/companions/english/" + endpoint + suffix, body, body === undefined ? undefined : account);
     });
   }
 }

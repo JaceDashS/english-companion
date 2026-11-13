@@ -6,7 +6,7 @@
 - The Unit tab searches units, filters to units with wrong answers and shows the learned share of each unit. The progress tab shows completed units, learned words and the average review stage.
 - A session opens full screen. Study shows one word at a time with its meaning and example (both can be hidden). The quiz shows the word, a scratch memo field, then four sentences that all use the word; choosing a sentence grades it at once and shows the meaning. Sentence order is shuffled per session. A review session from the queue quizzes only the unit's due words.
 - Only words with a usage quiz are quizzed. Results are saved only when the learner presses save on the result step.
-- Content is empty until it is added later; the screens then explain that no words exist yet.
+- Bundled content starts empty. The account library supplies a short original example story and a small example vocabulary material; personal materials can be added. See [Reading Books](40-reading-books.md).
 - Content supports named books containing units. The mobile book dropdown scopes its queue, counters, Unit list, progress and due badge to the selected book. Desktop continues showing all units without a new control. Book selection survives tab and study navigation within the app session, resets on account changes or logout, and defaults to the first book after reload.
 - Preserve existing word IDs and account progress; the legacy flat unit format remains supported as the default book. Book IDs, unit IDs and word IDs must each be unique across the catalog.
 - Theme (dark or light) and layout mode (auto, phone, PC) are stored on the device only.

@@ -189,3 +189,25 @@ test("disabled native Google configuration never invokes the picker or issues a 
     nativeGoogleChallenge: forbidden, nativeGoogleLogin: forbidden },
     { checkPlayServices: forbidden, configure: () => { throw Error("must not configure"); }, pickAccount: forbidden }, true), /GOOGLE_NOT_CONFIGURED/);
 });
+
+
+test("reading requests bind notes to the enqueued account and reject writes after logout", async () => {
+  const calls: Call[] = [];
+  const client = new EnglishClient(createBrowserTransport("https://api.jace-s.com", fakeFetch([
+    { body: { user: { id: "reader-a", username: "a" }, csrfToken: "csrf" } },
+    { body: { ok: true, detail: null } },
+    { body: { ok: true } },
+    { body: {} },
+  ], calls)));
+  await client.restore();
+  await client.libraryRequest("word", undefined, { word: "a b" });
+  assert.equal(calls[1].url, "https://api.jace-s.com/companions/english/word?word=a+b");
+  await client.libraryRequest("word-note", { word: "window", note: "one" });
+  assert.equal((calls[2].init.headers as Record<string, string>)["x-companion-user"], "reader-a");
+  const loggingOut = client.logout();
+  const stale = client.libraryRequest("word-note", { word: "window", note: "stale" });
+  await loggingOut;
+  await assert.rejects(stale, (error: unknown) => error instanceof ApiError && error.status === 401);
+  assert.equal(calls.length, 4);
+  await assert.rejects(client.libraryRequest("../auth"));
+});

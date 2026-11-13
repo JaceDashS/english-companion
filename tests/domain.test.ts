@@ -1,3 +1,4 @@
+import { segmentProse } from "../src/readingWords";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ContentError, parseBooks, parseContent } from "../src/content/content.ts";
@@ -117,4 +118,15 @@ test("dashboard rows map units with due reviews, the next new unit, stage bucket
   assert.deepEqual(queue.learning.map((row) => row.unit.id), ["u2"]);
   assert.deepEqual(stageBuckets(units, progress).map((bucket) => bucket.count), [3, 0, 1, 0, 0, 0, 1]);
   assert.deepEqual(["2026-11-09", "2026-11-08", "2026-11-01"].map((date) => relativeDay(date, "2026-11-09")), ["오늘", "어제", "8일 전"]);
+});
+
+
+test("prose tokens preserve text and include unknown word actions", () => {
+  for (const [language, text] of [["en", "A window, Zorblax!\nBird's song."], ["ja", "素直な猫。\n未登録語も読む。"]] as const) {
+    const parts = segmentProse(text, language);
+    assert.equal(parts.map(part => part.text).join(""), text);
+    assert.ok(parts.some(part => part.word));
+    assert.ok(parts.filter(part => part.word).every(part => part.text.trim().length > 0));
+    if (language === "en") assert.ok(parts.some(part => part.word && part.text === "Zorblax"));
+  }
 });

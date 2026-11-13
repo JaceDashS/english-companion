@@ -1,3 +1,4 @@
+import type { LibraryApi, LibraryBook } from "./readingWords";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking, useWindowDimensions, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -20,7 +21,6 @@ import { isDesktopLayout } from "./responsive";
 import { BrowserTheme } from "./BrowserTheme";
 
 const BOOKS = parseBooks(rawContent);
-const UNITS = BOOKS.flatMap(book => book.units);
 
 type Gate =
   | { kind: "checking" }
@@ -45,7 +45,12 @@ export default function App() {
   const [error, setError] = useState("");
   const userId = useRef("");
   const desktop = isDesktopLayout(width, height, display.device);
-  const visibleUnits = desktop ? UNITS : BOOKS.find(book => book.id === bookId)?.units ?? [];
+  const [personalMaterials, setPersonalMaterials] = useState<LibraryBook[]>([]);
+  const libraryApi: LibraryApi = useCallback((endpoint, body, query) => client.libraryRequest(endpoint, body, query), [client]);
+  const books = useMemo(() => [...BOOKS, ...personalMaterials.filter(book => book.kind === "vocabulary").map(book => ({ id: book.id, title: book.title, units: [{ id: book.id, title: book.title, words: book.words }] }))], [personalMaterials]);
+  const allUnits = useMemo(() => books.flatMap(book => book.units), [books]);
+  const visibleUnits = desktop ? allUnits : books.find(book => book.id === bookId)?.units ?? [];
+  const reloadLibrary = useCallback(() => { void libraryApi<{ books: LibraryBook[] }>("library").then(data => setPersonalMaterials(data.books), () => setError("교재 목록을 새로 불러오지 못했습니다.")); }, [libraryApi]);
   const c = palettes[display.theme];
 
   useEffect(() => { readDisplay().then(setDisplay, () => undefined); }, []);
@@ -57,6 +62,8 @@ export default function App() {
     try {
       const clock = await client.bootstrap();
       const progress = await client.progress();
+      const library = await client.libraryRequest<{ books: LibraryBook[] }>("library");
+      setPersonalMaterials(library.books);
       if (userId.current && userId.current !== user.id) { setSession(null); setTab("today"); setBookId(BOOKS[0]?.id ?? ""); }
       userId.current = user.id;
       setGate({ kind: "ready", user, clock, clockAt: Date.now(), progress });
@@ -112,11 +119,11 @@ export default function App() {
   if (gate.kind === "checking") body = <View style={layout.body}><T tone="muted">로그인 확인 중…</T></View>;
   else if (gate.kind === "login") body = <LoginScreen client={client} notice={gate.notice} onLoggedIn={(user) => enter(user)} />;
   else if (gate.kind === "blocked") body = <View style={[layout.body, { maxWidth: 520 }]}><Card title="English Companion"><T>{gate.message}</T><Btn variant="primary" title="메인 페이지로" onPress={() => void Linking.openURL(SITE_ORIGIN + "/")} /></Card></View>;
-  else if (session) body = <SessionScreen key={session.title + session.words.map((word) => word.id).join()} start={session} progress={gate.progress} isPhone={!desktop} busy={busy} error={error} onSave={(results) => void save(results)} onClose={() => { setError(""); setSession(null); }} />;
+  else if (session) body = <SessionScreen libraryApi={libraryApi} key={session.title + session.words.map((word) => word.id).join()} start={session} progress={gate.progress} isPhone={!desktop} busy={busy} error={error} onSave={(results) => void save(results)} onClose={() => { setError(""); setSession(null); }} />;
   else body = <Chrome desktop={desktop} tab={tab} today={today} dueCount={visibleUnits.filter((unit) => unit.words.some((word) => word.quiz && gate.progress[word.id] && gate.progress[word.id].due <= today)).length} onNavigate={setTab}>
     {tab === "settings"
       ? <SettingsScreen client={client} phone={!desktop} busy={busy} error={error} display={display} onDisplay={changeDisplay} onLogout={() => void logout()} onExpired={expired} />
-      : <HomeScreen key={gate.user.id} books={BOOKS} bookId={bookId} onBookChange={setBookId} units={UNITS} progress={gate.progress} today={today} desktop={desktop} tab={tab}
+      : <HomeScreen libraryApi={libraryApi} onLibraryChanged={reloadLibrary} key={gate.user.id} books={books} bookId={bookId} onBookChange={setBookId} units={allUnits} progress={gate.progress} today={today} desktop={desktop} tab={tab}
         onStudy={(row) => setSession({ title: row.unit.title, words: row.unit.words, review: false })}
         onReview={(row) => setSession({ title: row.unit.title + " 복습", words: row.dueWords, review: true })} />}
   </Chrome>;

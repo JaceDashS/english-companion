@@ -1,3 +1,5 @@
+import { WordLookup } from "../ReadingLibrary";
+import type { LibraryApi } from "../readingWords";
 import React, { useContext, useEffect, useState } from "react";
 import { Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import type { Progress, StudyResult } from "../api/types";
@@ -45,8 +47,8 @@ function NavButton({ title, label, phone, primary = false, disabled, onPress, te
 }
 
 /** Study and usage-quiz session in the Japanese Companion layout: top bar, word tiles on PC or a sheet on phones, bottom navigator and a save step. */
-export function SessionScreen({ start, progress, isPhone, busy, error, onSave, onClose }: {
-  start: SessionStart; progress: Progress; isPhone: boolean; busy: boolean; error: string;
+export function SessionScreen({ libraryApi, start, progress, isPhone, busy, error, onSave, onClose }: {
+  libraryApi: LibraryApi; start: SessionStart; progress: Progress; isPhone: boolean; busy: boolean; error: string;
   onSave: (results: Record<string, StudyResult>) => void; onClose: () => void;
 }) {
   const c = useContext(Theme);
@@ -57,6 +59,7 @@ export function SessionScreen({ start, progress, isPhone, busy, error, onSave, o
   const [orders] = useState(() => Object.fromEntries(quizList.map((word) => [word.id, sentenceOrder()])));
   const [chosen, setChosen] = useState<Record<string, number>>({});
   const [results, setResults] = useState<Record<string, StudyResult>>({});
+  const [wordNote, setWordNote] = useState<string | null>(null);
   const [meaning, setMeaning] = useState(true);
   const [example, setExample] = useState(true);
   const [panel, setPanel] = useState<"items" | "hide">("items");
@@ -89,6 +92,8 @@ export function SessionScreen({ start, progress, isPhone, busy, error, onSave, o
   const graded = Object.keys(results).length;
   const last = progress;
 
+  const noteControl = word && (phase === "study" || Boolean(result)) ? <Btn title="뜻과 내 메모" onPress={() => setWordNote(word.word)} /> : null;
+
   const tiles = <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
     {list.map((entry, position) => {
       const active = position === index && phase !== "done";
@@ -109,6 +114,7 @@ export function SessionScreen({ start, progress, isPhone, busy, error, onSave, o
       {meaning && <T size={16.3} tone="muted" selectable style={{ textAlign: "center" }}>{word.meaning}</T>}
       {example && <Text selectable style={{ color: c.text, fontSize: 17, lineHeight: 28, fontFamily: fonts.serif, fontStyle: "italic", textAlign: "center", maxWidth: 560 }}>{word.example}</Text>}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center", alignItems: "center" }}><Switch on={meaning} onToggle={() => setMeaning(!meaning)} label="뜻" /><Switch on={example} onToggle={() => setExample(!example)} label="예문" /></View>
+      {noteControl}
     </WordCard>}
     {word?.quiz && phase === "quiz" && <>
       <View style={{ flexDirection: "row" }}><IdChip id={word.id} /></View>
@@ -158,5 +164,5 @@ export function SessionScreen({ start, progress, isPhone, busy, error, onSave, o
       <NavButton label="다음" title="→" phone={isPhone} primary disabled={!canNext} onPress={next} testID={phase === "quiz" ? "quiz-next" : "study-next"} />
     </View>}
     {sheet && <Sheet title={`${start.title} 목록`} onClose={() => setSheet(false)}>{tiles}</Sheet>}
-  </View>;
+  {wordNote && <WordLookup key={wordNote} api={libraryApi} word={wordNote} onClose={() => setWordNote(null)} />}</View>;
 }
