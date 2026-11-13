@@ -11,12 +11,12 @@ export default {
     android: {
       package: "com.jaces.englishcompanion",
       versionCode: 1,
-      adaptiveIcon: { foregroundImage: "./assets/icon.png", backgroundColor: "#2f2d2c" },
+      adaptiveIcon: { foregroundImage: "./assets/icon.png", backgroundColor: "#0f1513" },
       permissions: [],
       allowBackup: false,
     },
     ios: { bundleIdentifier: "com.jaces.englishcompanion", supportsTablet: true },
-    web: { bundler: "metro", output: "single", name: "English Companion", backgroundColor: "#15171c", favicon: "./assets/icon.png" },
+    web: { bundler: "metro", output: "single", name: "English Companion", backgroundColor: "#0f1513", favicon: "./assets/icon.png" },
     plugins: ["expo-secure-store", "./plugins/with-short-cmake-path.cjs"],
   },
 };
