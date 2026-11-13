@@ -1,3 +1,4 @@
+import { VocabularyImport } from "./VocabularyImport";
 import { ReaderText } from "./ReaderText";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { View } from "react-native";
@@ -30,10 +31,11 @@ export function MaterialEditor({ api, book, initialTitle = "", allowVocabulary, 
         <T size={12} tone="dim">단어와 뜻을 입력하세요. 같은 단어의 개인 메모는 모든 교재에서 공유합니다.</T>
         {words.map((word, index) => <View key={word.id || index} style={{ gap: 8 }}>
           <T size={12} tone="dim">{index + 1}번 단어</T>
-          {([['word', '단어'], ['meaning', '뜻'], ['example', '예문']] as const).map(([field, label]) => <Input key={field} label={`${index + 1}번 ${label}`} value={word[field]} onChangeText={value => setWords(previous => previous.map((entry, at) => at === index ? { ...entry, [field]: value } : entry))} />)}
+          {([['word', '단어'], ['meaning', '뜻'], ['decomposition', '제공 예문']] as const).map(([field, label]) => <Input key={field} multiline={field === "decomposition"} label={`${index + 1}번 ${label}`} value={field === "decomposition" ? word.decomposition ?? word.example : word[field]} onChangeText={value => setWords(previous => previous.map((entry, at) => at === index ? { ...entry, [field]: value } : entry))} />)}
+          <Input label={`${index + 1}번 어근`} placeholder="예: spect, port · 모르면 비워 두세요." value={(word.roots ?? []).join(", ")} onChangeText={value => setWords(previous => previous.map((entry, at) => at === index ? { ...entry, roots: value.split(/[,\s]+/).filter(Boolean) } : entry))} />
           <Btn title="이 단어 빼기" onPress={() => setWords(previous => previous.filter((_, at) => at !== index))} />
         </View>)}
-        <Btn title="단어 추가" onPress={() => setWords(previous => [...previous, { id: '', word: '', meaning: '', example: '', quiz: null }])} />
+        <Btn title="단어 추가" onPress={() => setWords(previous => [...previous, { id: '', word: '', meaning: '', example: '', decomposition: '', quiz: null }])} />
       </View>}
       {!!error && <T tone="error">{error}</T>}
       <View style={{ flexDirection: "row", gap: 8 }}><Btn title={busy ? "저장 중…" : "저장"} disabled={busy || !title.trim()} onPress={() => void save()} /><Btn title="취소" disabled={busy} onPress={onClose} /></View>
@@ -71,10 +73,11 @@ export function WordLookup({ api, word, onClose, onSaved }: { api: LibraryApi; w
     {detail && <>
       {!!detail.reading && <><T tone="dim" size={12}>후리가나</T><T>{detail.reading}</T></>}
       <T tone="dim" size={12}>뜻</T><T>{detail.meaning || "등록된 뜻이 없습니다."}</T>
-      <T tone="dim" size={12}>학습 노트</T><T>{detail.studyNote || "학습 노트가 없습니다."}</T>
-      <Input multiline label="내 메모" value={note} onChangeText={value => { setNote(value); setSaved(false); }} placeholder="이 단어의 메모" />
+      {!!detail.roots?.length && <><T tone="dim" size={12}>어원 어근</T><T>{detail.roots.join(" · ")}</T></>}
+      <T tone="dim" size={12}>제공 예문</T><T>{detail.studyNote || "제공 예문가 없습니다."}</T>
+      <Input multiline label="내 예문" value={note} onChangeText={value => { setNote(value); setSaved(false); }} placeholder="이 단어를 사용해 직접 예문을 적어보세요." />
       <T size={12} tone="dim">같은 단어의 메모는 다른 교재에서도 함께 바뀝니다.</T>
-      <Btn title={busy ? "저장 중…" : "메모 저장"} disabled={busy} onPress={() => void save()} />
+      <Btn title={busy ? "저장 중…" : "내 예문 저장"} disabled={busy} onPress={() => void save()} />
       {saved && <T>저장했습니다.</T>}
     </>}
   </View></Sheet>;
@@ -83,6 +86,8 @@ export function WordLookup({ api, word, onClose, onSaved }: { api: LibraryApi; w
 /** A plain prose reader. Every segmented word opens a lookup, including unregistered words. */
 export function ReadingLibrary({ api, language, allowVocabulary = false, revision = 0, onChanged }: { api: LibraryApi; language: "ja" | "en"; allowVocabulary?: boolean; revision?: number; onChanged?: () => void }) {
   const c = useContext(Theme);
+  const [importing, setImporting] = useState<LibraryBook | null>(null);
+  const [usedExamples, setUsedExamples] = useState<Record<string, string[]>>({});
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [selected, setSelected] = useState<LibraryBook | null>(null);
   const [editing, setEditing] = useState<LibraryBook | "new" | null>(null);
@@ -91,7 +96,7 @@ export function ReadingLibrary({ api, language, allowVocabulary = false, revisio
   const [round, setRound] = useState(0);
   useEffect(() => {
     let active = true;
-    api<{ books: LibraryBook[] }>("library").then(data => { if (active) { setBooks(data.books); setError(""); } }, cause => { if (active) setError(cause instanceof Error ? cause.message : "책을 불러오지 못했습니다."); });
+    api<{ books: LibraryBook[]; usedExamples?: Record<string, string[]> }>("library").then(data => { if (active) { setBooks(data.books); setUsedExamples(data.usedExamples ?? {}); setError(""); } }, cause => { if (active) setError(cause instanceof Error ? cause.message : "책을 불러오지 못했습니다."); });
     return () => { active = false; };
   }, [api, revision, round]);
   const reload = () => { setRound(value => value + 1); onChanged?.(); };
@@ -100,7 +105,7 @@ export function ReadingLibrary({ api, language, allowVocabulary = false, revisio
       <View style={{ gap: 10 }}>
         <T size={12} tone="dim">단어를 누르면 뜻과 내 메모를 확인합니다.</T>
         {books.filter(book => book.kind === "book").map(book => <View key={book.id} style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}><Btn title={book.title} onPress={() => setSelected(book)} /><Btn title="편집" onPress={() => setEditing(book)} /></View>)}
-        {allowVocabulary && books.filter(book => book.kind === "vocabulary").map(book => <View key={book.id} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><T>{book.title} · 단어장</T><Btn title="편집" onPress={() => setEditing(book)} /></View>)}
+        {allowVocabulary && books.filter(book => book.kind === "vocabulary").map(book => <View key={book.id} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}><T style={{ flexShrink: 1 }}>{book.title} · 단어장</T><Btn title="편집" onPress={() => setEditing(book)} /><Btn title="가져오기·보충" onPress={() => setImporting(book)} /></View>)}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}><Btn title={allowVocabulary ? "교재 추가" : "책 추가"} onPress={() => setEditing("new")} /><Btn title="목록 새로고침" onPress={reload} /></View>
         {!!error && <T tone="error">{error}</T>}
       </View>
@@ -110,6 +115,7 @@ export function ReadingLibrary({ api, language, allowVocabulary = false, revisio
       {!selected.body.trim() ? <T>본문이 없습니다. 편집에서 본문을 추가하세요.</T> : <ReaderText color={c.text} font={fonts.serif} tokens={selected.tokens ?? segmentProse(selected.body, language)} onWord={setWord} />}
     </Sheet>}
     {word && <WordLookup key={word} api={api} word={word} onSaved={onChanged} onClose={() => setWord(null)} />}
+    {importing && <VocabularyImport api={api} book={books.find(book => book.id === importing.id) ?? importing} usedExamples={usedExamples} onClose={() => setImporting(null)} onSaved={reload} />}
     {editing && <MaterialEditor api={api} book={editing === "new" ? undefined : editing} allowVocabulary={allowVocabulary} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); setSelected(null); reload(); }} />}
   </>;
 }

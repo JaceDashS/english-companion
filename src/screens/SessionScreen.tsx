@@ -1,11 +1,11 @@
 import { WordLookup } from "../ReadingLibrary";
 import type { LibraryApi } from "../readingWords";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import type { Progress, StudyResult } from "../api/types";
-import type { EnglishWord } from "../content/content";
-import { grade, quizWords, sentenceOrder } from "../domain/study";
-import { Btn, Chip, Empty, fonts, Input, primaryFill, Segment, Sheet, Switch, T, Theme } from "../ui";
+import type { EnglishWord, UsageQuiz } from "../content/content";
+import { grade, sentenceOrder } from "../domain/study";
+import { Btn, Card, Chip, Empty, fonts, Input, primaryFill, Segment, Sheet, Switch, T, Theme } from "../ui";
 
 export type SessionStart = { title: string; words: EnglishWord[]; review: boolean };
 type Phase = "study" | "quiz" | "done";
@@ -13,7 +13,7 @@ type Phase = "study" | "quiz" | "done";
 /** One-line scratch memo for the current question; never saved and recreated empty for each question. */
 function QuizMemo() {
   const [memo, setMemo] = useState("");
-  return <Input label="메모" placeholder="메모 (저장되지 않음)" value={memo} onChangeText={setMemo} testID="quiz-memo" />;
+  return <Input label="풀이 메모" placeholder="문제를 풀 때만 쓰는 임시 메모" value={memo} onChangeText={setMemo} testID="quiz-memo" />;
 }
 function WordCard({ children }: { children: React.ReactNode }) {
   const c = useContext(Theme);
@@ -53,10 +53,15 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
 }) {
   const c = useContext(Theme);
   const { width: viewport } = useWindowDimensions();
-  const quizList = quizWords(start.words);
+  const [reservation, setReservation] = useState<{ questions: { wordId: string; quiz: UsageQuiz }[]; exhausted: string[] } | null>(null);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizError, setQuizError] = useState("");
+  const [quizRetry, setQuizRetry] = useState(0);
+  const quizRequest = useRef(Date.now().toString(36) + "-" + Math.random().toString(36).slice(2));
+  const quizList = (reservation?.questions ?? []).map(question => ({ ...start.words.find(word => word.id === question.wordId)!, quiz: question.quiz }));
   const [phase, setPhase] = useState<Phase>(start.review ? "quiz" : "study");
   const [indexes, setIndexes] = useState({ study: 0, quiz: 0 });
-  const [orders] = useState(() => Object.fromEntries(quizList.map((word) => [word.id, sentenceOrder()])));
+  const [orders] = useState(() => Object.fromEntries(start.words.map((word) => [word.id, sentenceOrder()])));
   const [chosen, setChosen] = useState<Record<string, number>>({});
   const [results, setResults] = useState<Record<string, StudyResult>>({});
   const [wordNote, setWordNote] = useState<string | null>(null);
@@ -72,9 +77,16 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
   const choose = (original: number) => { if (!word?.quiz || result) return; setChosen((previous) => ({ ...previous, [word.id]: original })); setResults((previous) => ({ ...previous, [word.id]: grade(word, original) })); };
   const canNext = phase === "study" || (phase === "quiz" && !!result);
   const next = () => {
-    if (phase === "study") { if (index < list.length - 1) setIndex(index + 1); else if (quizList.length) setPhase("quiz"); else onClose(); }
+    if (phase === "study") { if (index < list.length - 1) setIndex(index + 1); else setPhase("quiz"); }
     else if (phase === "quiz" && result) { if (index < list.length - 1) setIndex(index + 1); else setPhase("done"); }
   };
+  useEffect(() => {
+    if (phase !== "quiz" || reservation) return;
+    let active = true;
+    setQuizLoading(true); setQuizError("");
+    libraryApi<{ questions: { wordId: string; quiz: UsageQuiz }[]; exhausted: string[] }>("quiz/take", { requestId: quizRequest.current, wordIds: start.words.map(word => word.id) }).then(value => { if (active) { setQuizLoading(false); setReservation(value); } }, cause => { if (active) { setQuizLoading(false); setQuizError(cause instanceof Error ? cause.message : "문제를 불러오지 못했습니다."); } });
+    return () => { active = false; };
+  }, [phase, reservation, libraryApi, start.words, quizRetry]);
   useEffect(() => {
     if (Platform.OS !== "web") return;
     const onKey = (event: KeyboardEvent) => {
@@ -92,7 +104,7 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
   const graded = Object.keys(results).length;
   const last = progress;
 
-  const noteControl = word && (phase === "study" || Boolean(result)) ? <Btn title="뜻과 내 메모" onPress={() => setWordNote(word.word)} /> : null;
+  const noteControl = word && (phase === "study" || Boolean(result)) ? <Btn title="뜻과 내 예문" onPress={() => setWordNote(word.word)} /> : null;
 
   const tiles = <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
     {list.map((entry, position) => {
@@ -112,8 +124,8 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
       </View>
       <Text selectable style={{ color: c.text, fontSize: wordSize, lineHeight: wordSize * 1.25, fontFamily: fonts.serif, textAlign: "center" }}>{word.word}</Text>
       {meaning && <T size={16.3} tone="muted" selectable style={{ textAlign: "center" }}>{word.meaning}</T>}
-      {example && <Text selectable style={{ color: c.text, fontSize: 17, lineHeight: 28, fontFamily: fonts.serif, fontStyle: "italic", textAlign: "center", maxWidth: 560 }}>{word.example}</Text>}
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center", alignItems: "center" }}><Switch on={meaning} onToggle={() => setMeaning(!meaning)} label="뜻" /><Switch on={example} onToggle={() => setExample(!example)} label="예문" /></View>
+      {example && <Text selectable style={{ color: c.text, fontSize: 17, lineHeight: 28, fontFamily: fonts.serif, fontStyle: "italic", textAlign: "center", maxWidth: 560 }}>{word.decomposition ?? word.example}</Text>}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center", alignItems: "center" }}><Switch on={meaning} onToggle={() => setMeaning(!meaning)} label="뜻" /><Switch on={example} onToggle={() => setExample(!example)} label="제공 예문" /></View>
       {noteControl}
     </WordCard>}
     {word?.quiz && phase === "quiz" && <>
@@ -137,7 +149,10 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
         <Btn variant="ghost" title="저장하지 않고 목록으로" disabled={busy} onPress={onClose} />
       </View>
     </WordCard>}
-    {!list.length && phase !== "done" && <Empty>이 Unit에는 아직 단어가 없습니다.</Empty>}
+    {phase === "quiz" && quizLoading && <T>새 문제를 불러오는 중…</T>}
+    {!!quizError && <><T tone="error">{quizError}</T><Btn title="다시 불러오기" onPress={() => setQuizRetry(value => value + 1)} /></>}
+    {phase === "quiz" && reservation && reservation.exhausted.length > 0 && <Card title="새 문제 보충이 필요합니다"><T>아직 사용하지 않은 예문이 없는 단어가 {reservation.exhausted.length}개 있습니다. 목록의 가져오기·보충에서 프롬프트를 복사해 새 문제를 추가하세요. 이미 본 예문은 다시 출제하지 않습니다.</T><Btn title="목록으로" onPress={onClose} /></Card>}
+    {!list.length && phase === "study" && <Empty>이 Unit에는 아직 단어가 없습니다.</Empty>}
   </>;
   const split = !isPhone && panel === "items" && phase !== "done";
   return <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -145,10 +160,10 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
       <Btn size="icon" title="←" label="세션 닫기" disabled={busy} onPress={onClose} testID="back-home" />
       <View style={{ minWidth: 0, flexShrink: 1 }}>
         <T size={14.7} weight="700" numberOfLines={1}>{start.title}</T>
-        <T size={11.4} mono tone="dim">{phase === "done" ? "-" : index + 1}/{list.length} · {start.review ? "복습" : "학습"} · {phase === "study" ? "단어" : phase === "quiz" ? "문제" : "완료"}</T>
+        <T size={11.4} mono tone="dim">{phase === "done" || !list.length ? "-" : index + 1}/{list.length} · {start.review ? "복습" : "학습"} · {phase === "study" ? "단어" : phase === "quiz" ? "문제" : "완료"}</T>
       </View>
       <View style={{ flex: 1 }} />
-      {!start.review && <Btn title={phase === "quiz" ? "학습" : "문제"} label={phase === "quiz" ? "학습으로" : "문제로"} disabled={phase === "done" || !quizList.length} onPress={() => setPhase(phase === "quiz" ? "study" : "quiz")} />}
+      {!start.review && <Btn title={phase === "quiz" ? "학습" : "문제"} label={phase === "quiz" ? "학습으로" : "문제로"} disabled={phase === "done" || !start.words.length} onPress={() => setPhase(phase === "quiz" ? "study" : "quiz")} />}
       {isPhone ? <Btn size="icon" title="▦" label="단어 목록" disabled={phase === "done"} onPress={() => setSheet(true)} />
         : <Segment options={[{ key: "items", label: "목록" }, { key: "hide", label: "숨김" }]} value={panel} onChange={(key) => setPanel(key as "items" | "hide")} />}
     </View>

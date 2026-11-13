@@ -1,3 +1,4 @@
+import { buildEnglishImportPrompt, groupWordsByRoot } from "../src/englishImport";
 import { segmentProse } from "../src/readingWords";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -129,4 +130,28 @@ test("prose tokens preserve text and include unknown word actions", () => {
     assert.ok(parts.filter(part => part.word).every(part => part.text.trim().length > 0));
     if (language === "en") assert.ok(parts.some(part => part.word && part.text === "Zorblax"));
   }
+});
+
+
+test("provided examples prefer decomposition and retain the legacy example fallback", () => {
+  const word = { id: "decomposition-word", word: "window", meaning: "창문", example: "old", decomposition: "provided example", quiz: null };
+  const parsed = parseContent({ version: 1, units: [{ id: "examples", title: "Examples", words: [word] }] })[0].words[0];
+  assert.equal(parsed.decomposition, "provided example");
+  assert.equal(parsed.example, "provided example");
+  const { decomposition, ...legacy } = word;
+  assert.equal(parseContent({ version: 1, units: [{ id: "legacy-examples", title: "Examples", words: [legacy] }] })[0].words[0].decomposition, "old");
+});
+
+
+test("etymological root groups span materials and do not duplicate spellings", () => {
+  const rootWord = (id: string, word: string, roots: string[]) => ({ id, word, roots, meaning: "meaning", example: "example", quiz: null });
+  const groups = groupWordsByRoot([rootWord("a", "inspect", ["spect"]), rootWord("b", "spectator", ["spect", "test"]), rootWord("c", "INSPECT", ["spect"]), rootWord("d", "unknown", [])]);
+  assert.deepEqual([...groups.keys()], ["spect", "test"]);
+  assert.deepEqual(groups.get("spect")!.map(word => word.word), ["inspect", "spectator"]);
+  assert.equal(groups.get("test")!.length, 1);
+});
+
+test("import prompt requests varied unseen pools and includes replenishment history without personal notes", () => {
+  const prompt = buildEnglishImportPrompt({ id: "b", title: "Words", kind: "vocabulary", body: "", words: [{ id: "a", word: "inspect", meaning: "inspect meaning", example: "Study sentence.", roots: ["spect"], quiz: null }] }, { inspect: ["Used sentence."] });
+  for (const expected of ["jace-s.english-words", "decomposition", "roots", "quizzes", "8세트", "Study sentence.", "Used sentence.", "절대 생성하지"]) assert.ok(prompt.includes(expected), expected);
 });

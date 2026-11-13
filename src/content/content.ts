@@ -3,6 +3,7 @@
  * so IDs must stay stable once published.
  */
 export interface UsageQuiz {
+  pattern?: string;
   /** Exactly four sentences that all use the word. */
   sentences: string[];
   /** Index (0-3) of the sentence that uses the word in the intended sense. */
@@ -14,6 +15,9 @@ export interface EnglishWord {
   word: string;
   meaning: string;
   example: string;
+  decomposition?: string;
+  roots?: string[];
+  quizzes?: UsageQuiz[];
   quiz: UsageQuiz | null;
 }
 
@@ -44,7 +48,7 @@ function parseQuiz(value: unknown, where: string): UsageQuiz | null {
   const { sentences, answer } = value as { sentences?: unknown; answer?: unknown };
   if (!Array.isArray(sentences) || sentences.length !== 4) throw new ContentError(where + ".sentences must have 4 sentences");
   if (!Number.isInteger(answer) || (answer as number) < 0 || (answer as number) > 3) throw new ContentError(where + ".answer must be 0-3");
-  return { sentences: sentences.map((s, i) => text(s, `${where}.sentences[${i}]`)), answer: answer as number };
+  return { sentences: sentences.map((s, i) => text(s, `${where}.sentences[${i}]`)), answer: answer as number, ...(typeof (value as any).pattern === "string" ? { pattern: (value as any).pattern } : {}) };
 }
 
 function parseUnits(units: unknown, seen: Set<string>, unitIds: Set<string>): EnglishUnit[] {
@@ -69,8 +73,11 @@ function parseUnits(units: unknown, seen: Set<string>, unitIds: Set<string>): En
           id: value.id,
           word: text(value.word, at + ".word"),
           meaning: text(value.meaning, at + ".meaning"),
-          example: text(value.example, at + ".example"),
-          quiz: parseQuiz(value.quiz, at + ".quiz"),
+          example: text(value.decomposition ?? value.example ?? "", at + ".decomposition"),
+          decomposition: text(value.decomposition ?? value.example ?? "", at + ".decomposition"),
+          roots: Array.isArray(value.roots) ? value.roots.map((root, i) => text(root, `${at}.roots[${i}]`)) : [],
+          quizzes: Array.isArray(value.quizzes) ? value.quizzes.map((q, i) => parseQuiz(q, `${at}.quizzes[${i}]`)!).filter(Boolean) : undefined,
+          quiz: parseQuiz(value.quiz ?? (Array.isArray(value.quizzes) ? value.quizzes[0] : null), at + ".quiz"),
         };
       }),
     };

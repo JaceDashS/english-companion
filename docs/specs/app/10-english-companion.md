@@ -44,3 +44,5 @@ Android login must use the official Google account picker and the same account/s
 Example input: User cancels the Android picker. Steps: Open login, choose Google, cancel. Expected result: Login remains available without a credential exchange.
 
 - Design: [Companion authentication](../../design/app/10-english-companion.md#native-google-implementation)
+
+The quiz scratch field is labelled 풀이 메모 and remains temporary; learner-written examples are stored separately through 내 예문.

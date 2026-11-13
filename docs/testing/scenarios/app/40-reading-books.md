@@ -28,3 +28,9 @@
 - Steps: Open 雨の日の手紙 or The Open Window, use pointer and Enter to open known and unknown words, save a note and reopen it, resize to mobile, then create an English reading book and vocabulary material and look up the new vocabulary from the story.
 - Expected result: Annotations stay hidden in prose, saved notes return, unknown words have the explicit absent message, keyboard activation works, and mobile has no horizontal page overflow.
 - Verification: Passed 2026-11-14 in headless Edge. Browser API requests were intercepted into the real API handlers with an isolated test session; no live account data was modified. Android launch was not tested.
+
+## English Provided And Personal Examples
+
+- Input: A vocabulary word with decomposition and an existing personal note.
+- Steps: Save provided examples, open study and word lookup, and reopen the personal example.
+- Expected result: The provided example comes from decomposition; legacy example is a fallback; the personal example is never overwritten.

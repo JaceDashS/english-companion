@@ -26,3 +26,7 @@ The shared Expo screens select desktop or compact composition from available log
 ## Reading Materials
 
 ReadingLibrary renders prose and vocabulary management alongside the existing study screens. ReaderText uses native word actions or inline keyboard accessible web buttons. Account session transports call the platform reading API, which uses the serialized companion account store. Japanese definitions and notes reuse curriculum SQL; English vocabulary and notes use its account library. Server segmentation supplies the same word boundaries to web and native. See [Reading Books](../design/app/40-reading-books.md).
+
+## English Vocabulary Pools
+
+The English client imports externally generated question pools and persisted roots through guarded API calls. The serialized account library stores word roots and reservations with reading materials; root browsing derives groups from those fields. Session reservations precede display and remain consumed after abandonment. See [Vocabulary Design](../design/app/50-english-vocabulary.md).

@@ -59,3 +59,16 @@ A one-use server nonce bound to the Android Google account picker token. Code: n
 ## Personal Word Note
 - Definition: One account-owned note shared by all occurrences of the same word within a language.
 - Code: Japanese japanese_memos, English reading library notes.
+
+## English Decomposition
+- Definition: Provided example text for an English word, separate from learner-written examples in the personal note.
+- Code: EnglishWord.decomposition, LibraryWord.decomposition.
+- Notes: Japanese decomposition continues to mean kanji analysis.
+
+## Etymological Root
+- Definition: An explicitly registered historical root linking related English words, not a guessed spelling fragment or inflection family.
+- Code: LibraryWord.roots, EnglishWord.roots, groupWordsByRoot.
+
+## Usage Question Pool
+- Definition: Imported four-choice question sets with distinct sentence patterns. Reserved choices are never reused for a new session under the same account.
+- Code: LibraryWord.quizzes, usedExamples, reserveEnglishQuiz.

@@ -38,3 +38,14 @@ flowchart LR
 - The editor uses title and body inputs for books, and word, meaning and example rows for English vocabulary. JSON is only the transport representation.
 - Japanese original example 雨の日の手紙 includes 素直 from the maintained vocabulary, while unknown words remain selectable. English original example The Open Window ships with a small matching example vocabulary material.
 - Japanese existing SQL notes already have a user and expression primary key. The local duplicate audit found zero duplicate groups, so no note deletion or backup was necessary. English note keys normalize case and width and every write upserts one value.
+
+## English Provided And Personal Examples
+
+- Input: A word with decomposition, an older example value and an existing account note.
+- Output: Provided example text in study and lookup; unchanged personal example in the unique note.
+- Code: readingLibrary.ts parseWords and lookupReadingWord; English content.ts parser, ReadingLibrary.tsx editor and SessionScreen.tsx. decomposition wins over the legacy example alias; writes retain both fields for compatibility.
+- Scenario: Edit decomposition while an account note exists; the provided text changes and the personal example remains untouched.
+
+## English Roots And Question Pools
+
+The English study session now reserves unseen usage questions and supports root browsing and generated-data import. See [English Vocabulary](50-english-vocabulary.md).

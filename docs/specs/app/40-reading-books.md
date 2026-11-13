@@ -15,3 +15,7 @@
 - Input: A story containing a registered word and an unknown word.
 - Steps: Open the story, select each word, edit the registered word note and reopen it.
 - Expected result: Unannotated prose initially; registered details and the saved note, or an explicit missing-word message.
+
+## English Provided And Personal Examples
+
+English decomposition contains provided example sentences. The unique personal note contains learner-written examples and must not be filled with generated content. Existing example values remain readable.

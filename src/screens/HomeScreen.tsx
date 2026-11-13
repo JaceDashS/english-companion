@@ -1,3 +1,4 @@
+import { RootBrowser } from "../RootBrowser";
 import { ReadingLibrary } from "../ReadingLibrary";
 import type { LibraryApi } from "../readingWords";
 import React from "react";
@@ -59,6 +60,6 @@ export function HomeScreen({ libraryApi, onLibraryChanged, books, bookId, onBook
     </View>
   </>;
   return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={phone ? layout.phoneBody : layout.body}>
-    <ReadingLibrary api={libraryApi} language="en" allowVocabulary onChanged={onLibraryChanged} />{phone && <BookSelect books={books} value={selectedBook?.id ?? ""} onChange={onBookChange} />}{content}
+    <ReadingLibrary api={libraryApi} language="en" allowVocabulary onChanged={onLibraryChanged} /><RootBrowser api={libraryApi} words={units.flatMap(unit => unit.words)} />{phone && <BookSelect books={books} value={selectedBook?.id ?? ""} onChange={onBookChange} />}{content}
   </ScrollView>;
 }

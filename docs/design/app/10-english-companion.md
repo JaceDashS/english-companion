@@ -81,3 +81,9 @@ The common screen implementation restores responsive desktop and compact composi
 ## Reading Extension
 
 Books and persistent personal word notes are described in [Reading Books](40-reading-books.md). Existing textbook study keeps its behavior.
+
+## English Roots And Question Pools
+
+The English study session now reserves unseen usage questions and supports root browsing and generated-data import. See [English Vocabulary](50-english-vocabulary.md).
+
+The quiz scratch field is labelled 풀이 메모 and remains temporary; learner-written examples are stored separately through 내 예문.
