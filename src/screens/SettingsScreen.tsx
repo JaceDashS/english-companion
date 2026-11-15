@@ -52,7 +52,7 @@ export function SettingsScreen({ client, phone, busy, error, display, onDisplay,
         <Btn variant="danger" title={busy ? "로그아웃 중…" : "로그아웃"} disabled={busy} style={{ flex: 1 }} onPress={onLogout} testID="account-logout" />
       </View>
       <View style={{ flexDirection: "row", gap: 8 }}>
-        <Btn title="메인 페이지" style={{ flex: 1 }} onPress={() => void Linking.openURL(SITE_ORIGIN + "/apps")} testID="main-page" />
+        <Btn title="개발자에 대해" style={{ flex: 1 }} onPress={() => { const url = SITE_ORIGIN + "/about"; if (Platform.OS === "web" && typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer"); else void Linking.openURL(url); }} testID="about-developer" />
         <Btn title="피드백" style={{ flex: 1 }} onPress={() => void Linking.openURL(SITE_ORIGIN + "/feedback/10")} testID="feedback" />
       </View>
       {Platform.OS === "web" && <T size={13.1} tone="muted">같은 브라우저의 다른 jace-s 앱과 메인 사이트도 함께 로그아웃됩니다.</T>}
