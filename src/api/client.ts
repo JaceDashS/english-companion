@@ -130,11 +130,12 @@ export class EnglishClient {
     return this.serialize(async () => (await this.call<{ progress: Progress }>("/companions/english/progress")).progress);
   }
 
-  /** Saves graded words once; a network failure needs an explicit user retry. Returns the updated entries. */
-  saveResults(results: { id: string; result: StudyResult }[]): Promise<Progress> {
+  /** Account-bound, idempotent delivery used by the persistent result queue. */
+  saveResults(results: { id: string; result: StudyResult }[], requestId?: string, studyDate?: string): Promise<Progress> {
+    const account = this.user?.id;
     return this.serialize(async () => {
-      if (!this.user) throw new ApiError(401, "UNAUTHENTICATED");
-      return (await this.call<{ progress: Progress }>("/companions/english/save-results", { results }, this.user.id)).progress;
+      if (!account || account !== this.user?.id) throw new ApiError(401, "ACCOUNT_CHANGED");
+      return (await this.call<{ progress: Progress }>("/companions/english/save-results", { results, requestId, studyDate }, account)).progress;
     });
   }
   /** Account-scoped books, word lookups and unique notes over the existing serialized transport. */

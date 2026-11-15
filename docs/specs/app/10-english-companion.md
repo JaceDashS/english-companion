@@ -5,7 +5,7 @@
 - Today shows four stats (today's review units, today's new unit, started units, words to revisit), a queue, the word count per review stage and recent units. The queue lists units with due quiz words as review cards and the first unit that still has unstarted words as a learning card.
 - The Unit tab searches units, filters to units with wrong answers and shows the learned share of each unit. The progress tab shows completed units, learned words and the average review stage.
 - A session opens full screen. Study shows one word at a time with its meaning and example (both can be hidden). The quiz shows the word, a scratch memo field, then four sentences that all use the word; choosing a sentence grades it at once and shows the meaning. Sentence order is shuffled per session. A review session from the queue quizzes only the unit's due words.
-- Only words with a usage quiz are quizzed. Results are saved only when the learner presses save on the result step.
+- Only words with a usage quiz are quizzed. Final quiz Next immediately updates local progress and returns home when all answers are correct, or opens study for failed words before returning home. Delivery uses an account-scoped persistent FIFO queue with exponential backoff (1 second up to 60 seconds), without blocking navigation. The same operation ID is reused across retries and reloads. Pending results remain visible; permanent server rejections require an explicit retry.
 - Bundled content starts empty. The account library supplies a short original example story and a small example vocabulary material; personal materials can be added. See [Reading Books](40-reading-books.md).
 - Content supports named books containing units. The mobile book dropdown scopes its queue, counters, Unit list, progress and due badge to the selected book. Desktop continues showing all units without a new control. Book selection survives tab and study navigation within the app session, resets on account changes or logout, and defaults to the first book after reload.
 - Preserve existing word IDs and account progress; the legacy flat unit format remains supported as the default book. Book IDs, unit IDs and word IDs must each be unique across the catalog.
@@ -18,7 +18,7 @@
 - Design: [Quiz Scratch Memo](../../design/app/10-english-companion.md#quiz-scratch-memo)
 
 ## Progress
-- A pass raises the review stage by one and schedules the next review after 1, 2, 4, 7, 15 or 30 days; the last stage keeps 30 days. A fail resets the stage to 0 and schedules the review for the next day.
+- A pass raises the review stage by one and schedules the next review after 1, 2, 4, 7, 15 or 30 days; the last stage keeps 30 days. A fail lowers the stage by one, with a minimum of 0, and schedules the review for the day after the quiz.
 - Dates use the account calendar from the server clock, never the device date.
 - Design: [Progress And API](../../design/app/10-english-companion.md#progress-and-api)
 

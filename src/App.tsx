@@ -1,5 +1,5 @@
 import type { LibraryApi, LibraryBook } from "./readingWords";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Linking, useWindowDimensions, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -19,6 +19,11 @@ import { Btn, Card, Device, gradient, layout, palettes, T, Theme } from "./ui";
 import { Chrome, type Tab } from "./Chrome";
 import { isDesktopLayout } from "./responsive";
 import { BrowserTheme } from "./BrowserTheme";
+
+import { ResultQueue } from "./domain/resultQueue";
+import { resultStorage } from "./resultStorage";
+const EMPTY_DELIVERY = { items: [], persistent: true, progress: {} };
+const subscribeNone = () => () => {};
 
 const BOOKS = parseBooks(rawContent);
 
@@ -44,6 +49,14 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const userId = useRef("");
+  const queues = useRef(new Map<string, ResultQueue>());
+  const [resultQueue, setResultQueue] = useState<ResultQueue | null>(null);
+  const delivery = useSyncExternalStore(resultQueue?.subscribe ?? subscribeNone, resultQueue?.getSnapshot ?? (() => EMPTY_DELIVERY));
+  useEffect(() => {
+    if (!resultQueue) return;
+    setGate(previous => previous.kind === "ready" && previous.user.id === client.currentUser?.id ? { ...previous, progress: delivery.progress } : previous);
+  }, [delivery, resultQueue, client]);
+  useEffect(() => () => { for (const queue of queues.current.values()) queue.pause(); }, []);
   const desktop = isDesktopLayout(width, height, display.device);
   const [personalMaterials, setPersonalMaterials] = useState<LibraryBook[]>([]);
   const libraryApi: LibraryApi = useCallback((endpoint, body, query) => client.libraryRequest(endpoint, body, query), [client]);
@@ -65,8 +78,19 @@ export default function App() {
       const library = await client.libraryRequest<{ books: LibraryBook[] }>("library");
       setPersonalMaterials(library.books);
       if (userId.current && userId.current !== user.id) { setSession(null); setTab("today"); setBookId(BOOKS[0]?.id ?? ""); }
+      for (const queue of queues.current.values()) queue.pause();
+      let queue = queues.current.get(user.id);
+      if (!queue) {
+        queue = new ResultQueue(resultStorage(user.id), job => {
+          if (client.currentUser?.id !== user.id) return Promise.reject(new ApiError(401, "ACCOUNT_CHANGED"));
+          return client.saveResults(job.results, job.id, job.date);
+        });
+        queues.current.set(user.id, queue);
+      }
+      await queue.restore(progress);
+      setResultQueue(queue);
       userId.current = user.id;
-      setGate({ kind: "ready", user, clock, clockAt: Date.now(), progress });
+      setGate({ kind: "ready", user, clock, clockAt: Date.now(), progress: queue.getSnapshot().progress });
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) return setGate({ kind: "login", notice: "로그인이 끝났습니다. 다시 로그인해 주세요." });
       const code = cause instanceof ApiError ? cause.code : "";
@@ -80,25 +104,16 @@ export default function App() {
 
   const today = gate.kind === "ready" ? accountDate(gate.clock, Date.now() - gate.clockAt) : "";
 
-  /** Save the completed quiz before opening corrections or returning home. */
-  const save = async (results: Record<string, StudyResult>) => {
-    if (gate.kind !== "ready" || busy) return false;
-    setBusy(true);
-    setError("");
-    try {
-      const updated = await client.saveResults(Object.entries(results).map(([id, result]) => ({ id, result })));
-      setGate({ ...gate, progress: { ...gate.progress, ...updated } });
-      return true;
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) setGate({ kind: "login", notice: "로그인이 끝났습니다. 다시 로그인한 뒤 결과를 저장해 주세요." });
-      else setError("저장하지 못했습니다. 연결을 확인한 뒤 다시 저장해 주세요.");
-      return false;
-    } finally {
-      setBusy(false);
-    }
+  /** Local progress and navigation update immediately; durable delivery runs independently. */
+  const save = (results: Record<string, StudyResult>) => {
+    if (gate.kind !== "ready" || !resultQueue) return false;
+    resultQueue.enqueue(Object.entries(results).map(([id, result]) => ({ id, result })), today);
+    setGate(previous => previous.kind === "ready" ? { ...previous, progress: resultQueue.getSnapshot().progress } : previous);
+    return true;
   };
 
   const logout = async () => {
+    resultQueue?.pause();
     setBusy(true);
     try {
       await client.logout();
@@ -108,13 +123,14 @@ export default function App() {
       setBookId(BOOKS[0]?.id ?? "");
       setGate({ kind: "login" });
     } catch {
+      resultQueue?.resume();
       setError("로그아웃하지 못했습니다. 다시 시도해 주세요.");
     } finally {
       setBusy(false);
     }
   };
 
-  const expired = useCallback(() => { setSession(null); setGate({ kind: "login", notice: "로그인이 끝났습니다. 다시 로그인해 주세요." }); }, []);
+  const expired = useCallback(() => { for (const queue of queues.current.values()) queue.pause(); setSession(null); setGate({ kind: "login", notice: "로그인이 끝났습니다. 다시 로그인해 주세요." }); }, []);
 
   let body: React.ReactNode;
   if (gate.kind === "checking") body = <View style={layout.body}><T tone="muted">로그인 확인 중…</T></View>;
@@ -133,6 +149,11 @@ export default function App() {
     <StatusBar style={display.theme === "light" ? "dark" : "light"} />
     <SafeAreaView style={[{ flex: 1, backgroundColor: c.bg }, gradient(`radial-gradient(900px 480px at 85% -10%, ${c.glow}, transparent 70%)`)]}>
       <Notices />
+      {gate.kind === "ready" && delivery.items.length > 0 && <View style={{ padding: 10, gap: 6 }}>
+        <T size={12} tone="muted">전송 대기 {delivery.items.length}건 · 연결되면 자동으로 재시도합니다.</T>
+        {!delivery.persistent && <T size={12} tone="error">이 기기에서는 큐를 저장할 수 없어 앱을 닫으면 대기 기록이 사라질 수 있습니다.</T>}
+        {delivery.items.filter(job => job.status === "failed").map(job => <View key={job.id}><T size={12} tone="error">전송 거절: {job.error}</T><Btn title="재전송" onPress={() => resultQueue?.retry(job.id)} /></View>)}
+      </View>}
       {body}
     </SafeAreaView>
   </Device.Provider></Theme.Provider></SafeAreaProvider>;

@@ -49,7 +49,7 @@ function NavButton({ title, label, phone, primary = false, disabled, onPress, te
 /** Study and usage-quiz session in the Japanese Companion layout: top bar, word tiles on PC or a sheet on phones, bottom navigator and a save step. */
 export function SessionScreen({ libraryApi, start, progress, isPhone, busy, error, onSave, onClose }: {
   libraryApi: LibraryApi; start: SessionStart; progress: Progress; isPhone: boolean; busy: boolean; error: string;
-  onSave: (results: Record<string, StudyResult>) => Promise<boolean>; onClose: () => void;
+  onSave: (results: Record<string, StudyResult>) => boolean; onClose: () => void;
 }) {
   const c = useContext(Theme);
   const { width: viewport } = useWindowDimensions();
@@ -77,14 +77,14 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
   const choose = (original: number) => { if (!word?.quiz || result) return; setChosen((previous) => ({ ...previous, [word.id]: original })); setResults((previous) => ({ ...previous, [word.id]: grade(word, original) })); };
   const submitting = useRef(false);
   const canNext = !busy && (phase === "study" || phase === "corrections" || (phase === "quiz" && !!result));
-  const next = async () => {
+  const next = () => {
     if (busy || submitting.current) return;
     if (phase === "corrections") { if (index < list.length - 1) setIndex(index + 1); else onClose(); return; }
     if (phase === "study") { if (index < list.length - 1) setIndex(index + 1); else setPhase("quiz"); }
     else if (phase === "quiz" && result) { if (index < list.length - 1) setIndex(index + 1); else {
       submitting.current = true;
       try {
-        if (await onSave(results)) {
+        if (onSave(results)) {
           if (Object.values(results).includes("FAIL")) { setIndexes(previous => ({ ...previous, study: 0 })); setPhase("corrections"); }
           else onClose();
         }
