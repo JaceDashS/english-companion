@@ -51,6 +51,10 @@ export function SettingsScreen({ client, phone, busy, error, display, onDisplay,
         <Btn title="메인 사이트에서 계정 관리" style={{ flex: 1 }} onPress={() => void Linking.openURL(SITE_ORIGIN + "/#my-page")} />
         <Btn variant="danger" title={busy ? "로그아웃 중…" : "로그아웃"} disabled={busy} style={{ flex: 1 }} onPress={onLogout} testID="account-logout" />
       </View>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Btn title="메인 페이지" style={{ flex: 1 }} onPress={() => void Linking.openURL(SITE_ORIGIN + "/apps")} testID="main-page" />
+        <Btn title="피드백" style={{ flex: 1 }} onPress={() => void Linking.openURL(SITE_ORIGIN + "/feedback/10")} testID="feedback" />
+      </View>
       {Platform.OS === "web" && <T size={13.1} tone="muted">같은 브라우저의 다른 jace-s 앱과 메인 사이트도 함께 로그아웃됩니다.</T>}
       {!!error && <T size={13.1} tone="error">{error}</T>}
     </Card>
