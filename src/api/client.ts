@@ -29,6 +29,15 @@ export class EnglishClient {
   get currentUser(): User | null {
     return this.user;
   }
+  /** Posts public app feedback through the existing serialized session transport. */
+  submitFeedback(content: string): Promise<{ id: number }> {
+    const account = this.user?.id;
+    return this.serialize(() => {
+      if (!account || account !== this.user?.id) throw new ApiError(401, "UNAUTHENTICATED");
+      if (!content.trim()) throw new Error("Feedback is required");
+      return this.call("/comments", { content: content.trim(), sourceAppId: 10 }, account);
+    });
+  }
 
   /** Returns the signed-in user, or null when there is no valid session. */
   restore(): Promise<User | null> {

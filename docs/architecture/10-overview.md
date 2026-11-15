@@ -30,3 +30,7 @@ ReadingLibrary renders prose and vocabulary management alongside the existing st
 ## English Vocabulary Pools
 
 The English client imports externally generated question pools and persisted roots through guarded API calls. The serialized account library stores word roots and reservations with reading materials; root browsing derives groups from those fields. Session reservations precede display and remain consumed after abandonment. See [Vocabulary Design](../design/app/50-english-vocabulary.md).
+
+## Feedback Composer
+
+The app opens feedback locally and retains the existing comments API and authentication boundary. See [Feedback Dialog Design](../design/app/98-feedback-dialogs.md) for the UI and transport paths.

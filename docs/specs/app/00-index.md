@@ -7,3 +7,5 @@
 - [Reading Books](40-reading-books.md) — Prose reading, any word lookup and unique personal notes
 
 - [English Vocabulary](50-english-vocabulary.md) — Root groups, example import and unseen quiz pools
+
+- [Feedback Dialogs](98-feedback-dialogs.md) — In app feedback writing and motion preferences

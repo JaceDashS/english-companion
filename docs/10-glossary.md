@@ -72,3 +72,7 @@ A one-use server nonce bound to the Android Google account picker token. Code: n
 ## Usage Question Pool
 - Definition: Imported four-choice question sets with distinct sentence patterns. Reserved choices are never reused for a new session under the same account.
 - Code: LibraryWord.quizzes, usedExamples, reserveEnglishQuiz.
+
+## Feedback Composer
+
+An in app writing dialog that posts a public comment with the canonical product identity. Opening it keeps the current app screen in place.

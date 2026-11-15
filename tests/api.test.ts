@@ -211,3 +211,22 @@ test("reading requests bind notes to the enqueued account and reject writes afte
   assert.equal(calls.length, 4);
   await assert.rejects(client.libraryRequest("../auth"));
 });
+
+for (const browser of [true, false]) test(`feedback reuses the ${browser ? "browser" : "native"} session with canonical app 10`, async () => {
+  const calls: Call[] = [];
+  const send = fakeFetch([
+    { body: { user: { id: "u1", username: "learner" }, csrfToken: "feedback-csrf" }, cookies: ["session=feedback-session; Path=/", "csrf=feedback-csrf; Path=/"] },
+    { body: { id: 42 }, status: 201 },
+  ], calls);
+  const transport = browser ? createBrowserTransport("https://api.jace-s.com", send) : createNativeTransport("https://api.jace-s.com", memoryStore(), send);
+  const client = new EnglishClient(transport);
+  await assert.rejects(client.submitFeedback("hello"), /UNAUTHENTICATED/);
+  await client.login("learner", "password", true);
+  await assert.rejects(client.submitFeedback(" "), /Feedback is required/);
+  assert.deepEqual(await client.submitFeedback(" hello "), { id: 42 });
+  assert.equal(calls[1].url, "https://api.jace-s.com/comments");
+  assert.deepEqual(JSON.parse(String(calls[1].init.body)), { content: "hello", sourceAppId: 10 });
+  const headers = calls[1].init.headers as Record<string, string>;
+  assert.equal(headers["x-csrf-token"], "feedback-csrf");
+  assert.equal(headers["x-companion-user"], "u1");
+});

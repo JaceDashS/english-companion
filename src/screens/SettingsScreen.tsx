@@ -1,3 +1,4 @@
+import { FeedbackSheet } from "../FeedbackSheet";
 import React, { useEffect, useState } from "react";
 import { Linking, Platform, ScrollView, View } from "react-native";
 import type { EnglishClient } from "../api/client";
@@ -24,6 +25,7 @@ function Row({ title, hint, children }: { title: string; hint?: string; children
 export function SettingsScreen({ client, phone, busy, error, display, onDisplay, onLogout, onExpired }: {
   client: EnglishClient; phone: boolean; busy: boolean; error: string; display: Display; onDisplay: (next: Display) => void; onLogout: () => void; onExpired: () => void;
 }) {
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
   const [loadError, setLoadError] = useState(false);
   useEffect(() => {
@@ -41,7 +43,9 @@ export function SettingsScreen({ client, phone, busy, error, display, onDisplay,
     ["로그인 방식", account.hasLocalPassword ? "아이디·비밀번호" : "Google 전용"],
     ["가입일", formatTime(user.createdAt)], ["마지막 로그인", formatTime(user.lastLoginAt)],
   ] : [];
-  return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={phone ? layout.phoneBody : layout.body}>
+  return <>
+    {feedbackOpen && <FeedbackSheet send={content => client.submitFeedback(content)} onClose={() => setFeedbackOpen(false)} />}
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={phone ? layout.phoneBody : layout.body}>
     <Card title="계정">
       <View testID="account-screen" style={{ gap: 6, marginBottom: 2 }}>
         {!user && <T size={13.1} tone="muted">{loadError ? "계정 정보를 불러오지 못했습니다." : "계정 정보를 불러오는 중…"}</T>}
@@ -53,7 +57,7 @@ export function SettingsScreen({ client, phone, busy, error, display, onDisplay,
       </View>
       <View style={{ flexDirection: "row", gap: 8 }}>
         <Btn title="개발자에 대해" style={{ flex: 1 }} onPress={() => { const url = SITE_ORIGIN + "/about"; if (Platform.OS === "web" && typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer"); else void Linking.openURL(url); }} testID="about-developer" />
-        <Btn title="피드백" style={{ flex: 1 }} onPress={() => void Linking.openURL(SITE_ORIGIN + "/feedback/10")} testID="feedback" />
+        <Btn title="피드백" style={{ flex: 1 }} onPress={() => setFeedbackOpen(true)} testID="feedback" />
       </View>
       {Platform.OS === "web" && <T size={13.1} tone="muted">같은 브라우저의 다른 jace-s 앱과 메인 사이트도 함께 로그아웃됩니다.</T>}
       {!!error && <T size={13.1} tone="error">{error}</T>}
@@ -65,5 +69,5 @@ export function SettingsScreen({ client, phone, busy, error, display, onDisplay,
       </View>
       <T size={12.2} tone="dim">화면 설정은 이 기기에만 저장됩니다.</T>
     </Card>
-  </ScrollView>;
+  </ScrollView></>;
 }
