@@ -80,18 +80,19 @@ export default function App() {
 
   const today = gate.kind === "ready" ? accountDate(gate.clock, Date.now() - gate.clockAt) : "";
 
-  /** Results are written only when the learner presses save on the result step. */
+  /** Save the completed quiz before opening corrections or returning home. */
   const save = async (results: Record<string, StudyResult>) => {
-    if (gate.kind !== "ready" || busy) return;
+    if (gate.kind !== "ready" || busy) return false;
     setBusy(true);
     setError("");
     try {
       const updated = await client.saveResults(Object.entries(results).map(([id, result]) => ({ id, result })));
       setGate({ ...gate, progress: { ...gate.progress, ...updated } });
-      setSession(null);
+      return true;
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) setGate({ kind: "login", notice: "로그인이 끝났습니다. 다시 로그인한 뒤 결과를 저장해 주세요." });
       else setError("저장하지 못했습니다. 연결을 확인한 뒤 다시 저장해 주세요.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -119,7 +120,7 @@ export default function App() {
   if (gate.kind === "checking") body = <View style={layout.body}><T tone="muted">로그인 확인 중…</T></View>;
   else if (gate.kind === "login") body = <LoginScreen client={client} notice={gate.notice} onLoggedIn={(user) => enter(user)} />;
   else if (gate.kind === "blocked") body = <View style={[layout.body, { maxWidth: 520 }]}><Card title="English Companion"><T>{gate.message}</T><Btn variant="primary" title="메인 페이지로" onPress={() => void Linking.openURL(SITE_ORIGIN + "/")} /></Card></View>;
-  else if (session) body = <SessionScreen libraryApi={libraryApi} key={session.title + session.words.map((word) => word.id).join()} start={session} progress={gate.progress} isPhone={!desktop} busy={busy} error={error} onSave={(results) => void save(results)} onClose={() => { setError(""); setSession(null); }} />;
+  else if (session) body = <SessionScreen libraryApi={libraryApi} key={session.title + session.words.map((word) => word.id).join()} start={session} progress={gate.progress} isPhone={!desktop} busy={busy} error={error} onSave={save} onClose={() => { setError(""); setSession(null); }} />;
   else body = <Chrome desktop={desktop} tab={tab} today={today} dueCount={visibleUnits.filter((unit) => unit.words.some((word) => word.quiz && gate.progress[word.id] && gate.progress[word.id].due <= today)).length} onNavigate={setTab}>
     {tab === "settings"
       ? <SettingsScreen client={client} phone={!desktop} busy={busy} error={error} display={display} onDisplay={changeDisplay} onLogout={() => void logout()} onExpired={expired} />

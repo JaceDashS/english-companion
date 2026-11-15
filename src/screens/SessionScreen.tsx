@@ -8,7 +8,7 @@ import { grade, sentenceOrder } from "../domain/study";
 import { Btn, Card, Chip, Empty, fonts, Input, primaryFill, Segment, Sheet, Switch, T, Theme } from "../ui";
 
 export type SessionStart = { title: string; words: EnglishWord[]; review: boolean };
-type Phase = "study" | "quiz" | "done";
+type Phase = "study" | "quiz" | "done" | "corrections";
 
 /** One-line scratch memo for the current question; never saved and recreated empty for each question. */
 function QuizMemo() {
@@ -49,7 +49,7 @@ function NavButton({ title, label, phone, primary = false, disabled, onPress, te
 /** Study and usage-quiz session in the Japanese Companion layout: top bar, word tiles on PC or a sheet on phones, bottom navigator and a save step. */
 export function SessionScreen({ libraryApi, start, progress, isPhone, busy, error, onSave, onClose }: {
   libraryApi: LibraryApi; start: SessionStart; progress: Progress; isPhone: boolean; busy: boolean; error: string;
-  onSave: (results: Record<string, StudyResult>) => void; onClose: () => void;
+  onSave: (results: Record<string, StudyResult>) => Promise<boolean>; onClose: () => void;
 }) {
   const c = useContext(Theme);
   const { width: viewport } = useWindowDimensions();
@@ -69,16 +69,27 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
   const [example, setExample] = useState(true);
   const [panel, setPanel] = useState<"items" | "hide">("items");
   const [sheet, setSheet] = useState(false);
-  const list = phase === "quiz" ? quizList : start.words;
+  const list = phase === "quiz" ? quizList : phase === "corrections" ? start.words.filter(word => results[word.id] === "FAIL") : start.words;
   const index = phase === "quiz" ? indexes.quiz : indexes.study;
   const word = phase === "done" ? null : list[index] ?? null;
   const result = word ? results[word.id] : undefined;
   const setIndex = (next: number) => setIndexes((previous) => ({ ...previous, [phase === "quiz" ? "quiz" : "study"]: Math.max(0, Math.min(list.length - 1, next)) }));
   const choose = (original: number) => { if (!word?.quiz || result) return; setChosen((previous) => ({ ...previous, [word.id]: original })); setResults((previous) => ({ ...previous, [word.id]: grade(word, original) })); };
-  const canNext = phase === "study" || (phase === "quiz" && !!result);
-  const next = () => {
+  const submitting = useRef(false);
+  const canNext = !busy && (phase === "study" || phase === "corrections" || (phase === "quiz" && !!result));
+  const next = async () => {
+    if (busy || submitting.current) return;
+    if (phase === "corrections") { if (index < list.length - 1) setIndex(index + 1); else onClose(); return; }
     if (phase === "study") { if (index < list.length - 1) setIndex(index + 1); else setPhase("quiz"); }
-    else if (phase === "quiz" && result) { if (index < list.length - 1) setIndex(index + 1); else setPhase("done"); }
+    else if (phase === "quiz" && result) { if (index < list.length - 1) setIndex(index + 1); else {
+      submitting.current = true;
+      try {
+        if (await onSave(results)) {
+          if (Object.values(results).includes("FAIL")) { setIndexes(previous => ({ ...previous, study: 0 })); setPhase("corrections"); }
+          else onClose();
+        }
+      } finally { submitting.current = false; }
+    } }
   };
   useEffect(() => {
     if (phase !== "quiz" || reservation) return;
@@ -118,7 +129,7 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
     })}
   </View>;
   const body = <>
-    {word && phase === "study" && <WordCard>
+    {word && (phase === "study" || phase === "corrections") && <WordCard>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center", alignItems: "center" }}>
         <IdChip id={word.id} />{last[word.id]?.lastResult === "PASS" && <Chip tone="pass">지난 정답</Chip>}{last[word.id]?.lastResult === "FAIL" && <Chip tone="fail">지난 오답</Chip>}
       </View>
@@ -139,6 +150,7 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
         state={result ? (original === word.quiz!.answer ? "correct" : chosen[word.id] === original ? "wrong" : undefined) : undefined} onPress={() => choose(original)} />)}</View>
       {result && <Verdict pass={result === "PASS"}><T size={14.4} weight="600" style={{ color: result === "PASS" ? c.good : c.error }}>{result === "PASS" ? "정답입니다." : "오답입니다."}</T><T size={13.4} tone="muted" selectable>뜻: {word.meaning}</T></Verdict>}
     </>}
+    {!!error && phase !== "done" && <T tone="error">{error}</T>}
     {phase === "done" && <WordCard>
       <T serif size={41.6} style={{ lineHeight: 52, color: c.accent }}>{graded && pass === graded ? "Perfect" : "Done"}</T>
       <T size={16.3} tone="muted" style={{ textAlign: "center" }}>정답 {pass} / {graded}</T>
@@ -160,10 +172,10 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
       <Btn size="icon" title="←" label="세션 닫기" disabled={busy} onPress={onClose} testID="back-home" />
       <View style={{ minWidth: 0, flexShrink: 1 }}>
         <T size={14.7} weight="700" numberOfLines={1}>{start.title}</T>
-        <T size={11.4} mono tone="dim">{phase === "done" || !list.length ? "-" : index + 1}/{list.length} · {start.review ? "복습" : "학습"} · {phase === "study" ? "단어" : phase === "quiz" ? "문제" : "완료"}</T>
+        <T size={11.4} mono tone="dim">{phase === "done" || !list.length ? "-" : index + 1}/{list.length} · {start.review ? "복습" : "학습"} · {(phase === "study" || phase === "corrections") ? "단어" : phase === "quiz" ? "문제" : "완료"}</T>
       </View>
       <View style={{ flex: 1 }} />
-      {!start.review && <Btn title={phase === "quiz" ? "학습" : "문제"} label={phase === "quiz" ? "학습으로" : "문제로"} disabled={phase === "done" || !start.words.length} onPress={() => setPhase(phase === "quiz" ? "study" : "quiz")} />}
+      {!start.review && <Btn title={phase === "quiz" ? "학습" : "문제"} label={phase === "quiz" ? "학습으로" : "문제로"} disabled={busy || phase === "done" || phase === "corrections" || !start.words.length} onPress={() => setPhase(phase === "quiz" ? "study" : "quiz")} />}
       {isPhone ? <Btn size="icon" title="▦" label="단어 목록" disabled={phase === "done"} onPress={() => setSheet(true)} />
         : <Segment options={[{ key: "items", label: "목록" }, { key: "hide", label: "숨김" }]} value={panel} onChange={(key) => setPanel(key as "items" | "hide")} />}
     </View>
