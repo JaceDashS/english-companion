@@ -1,11 +1,10 @@
 import { RootBrowser } from "../RootBrowser";
 import { ReadingLibrary } from "../ReadingLibrary";
 import type { LibraryApi } from "../readingWords";
-import React from "react";
+import React, { useState } from "react";
 import { ScrollView, View } from "react-native";
 import type { Progress } from "../api/types";
 import type { EnglishBook, EnglishUnit } from "../content/content";
-import { BookSelect } from "../BookSelect";
 import { buildQueue, buildUnitRows, stageBuckets, type UnitRow } from "../domain/dashboard";
 import { Card, Empty, layout, T } from "../ui";
 import { ProgressPanel, RecentUnits, StageChart, Stats, UnitCard, UnitGrid } from "./Dashboard";
@@ -17,9 +16,10 @@ export function HomeScreen({ libraryApi, onLibraryChanged, books, bookId, onBook
   libraryApi: LibraryApi; onLibraryChanged: () => void; books: EnglishBook[]; bookId: string; onBookChange: (id: string) => void; units: EnglishUnit[]; progress: Progress; today: string; desktop: boolean; tab: HomeTab;
   onStudy: (row: UnitRow) => void; onReview: (row: UnitRow) => void;
 }) {
+  const [reading, setReading] = useState(false);
   const phone = !desktop;
   const selectedBook = books.find(book => book.id === bookId) ?? books[0];
-  const visibleUnits = phone ? selectedBook?.units ?? [] : units;
+  const visibleUnits = selectedBook?.units ?? [];
   const rows = buildUnitRows(visibleUnits, progress, today);
   const { reviews, learning } = buildQueue(rows);
   const failTotal = rows.reduce((sum, row) => sum + row.failCount, 0);
@@ -60,6 +60,8 @@ export function HomeScreen({ libraryApi, onLibraryChanged, books, bookId, onBook
     </View>
   </>;
   return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={phone ? layout.phoneBody : layout.body}>
-    <ReadingLibrary api={libraryApi} language="en" allowVocabulary onChanged={onLibraryChanged} /><RootBrowser api={libraryApi} words={units.flatMap(unit => unit.words)} />{phone && <BookSelect books={books} value={selectedBook?.id ?? ""} onChange={onBookChange} />}{content}
+    <ReadingLibrary api={libraryApi} language="en" allowVocabulary onChanged={onLibraryChanged} catalog={{ books, value: selectedBook?.id ?? "", onChange: onBookChange, onReadingChange: setReading }} />
+    {!reading && <><RootBrowser api={libraryApi} words={visibleUnits.flatMap(unit => unit.words)} />{content}</>}
+
   </ScrollView>;
 }

@@ -62,7 +62,7 @@ export default function App() {
   const libraryApi: LibraryApi = useCallback((endpoint, body, query) => client.libraryRequest(endpoint, body, query), [client]);
   const books = useMemo(() => [...BOOKS, ...personalMaterials.filter(book => book.kind === "vocabulary").map(book => ({ id: book.id, title: book.title, units: [{ id: book.id, title: book.title, words: book.words }] }))], [personalMaterials]);
   const allUnits = useMemo(() => books.flatMap(book => book.units), [books]);
-  const visibleUnits = desktop ? allUnits : books.find(book => book.id === bookId)?.units ?? [];
+  const visibleUnits = (books.find(book => book.id === bookId) ?? books[0])?.units ?? [];
   const reloadLibrary = useCallback(() => { void libraryApi<{ books: LibraryBook[] }>("library").then(data => setPersonalMaterials(data.books), () => setError("교재 목록을 새로 불러오지 못했습니다.")); }, [libraryApi]);
   const c = palettes[display.theme];
 
