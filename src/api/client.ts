@@ -71,6 +71,15 @@ export class EnglishClient {
     });
   }
 
+  /** Development-only local login without credentials. */
+  devLogin(): Promise<User> {
+    return this.serialize(async () => {
+      await this.transport.forget();
+      this.user = (await this.call<{ user: User }>("/auth/dev-login", {})).user;
+      return this.user;
+    });
+  }
+
   /** Public Google configuration for the browser button. */
   googleConfig(): Promise<{ enabled: boolean; clientId: string | null }> {
     return this.serialize(() => this.call("/auth/google/config"));

@@ -19,6 +19,7 @@ import { Btn, Card, Device, gradient, layout, palettes, T, Theme } from "./ui";
 import { Chrome, type Tab } from "./Chrome";
 import { isDesktopLayout } from "./responsive";
 import { BrowserTheme } from "./BrowserTheme";
+import { useMainReturn } from "./useMainReturn";
 
 import { ResultQueue } from "./domain/resultQueue";
 import { resultStorage } from "./resultStorage";
@@ -131,6 +132,23 @@ export default function App() {
   };
 
   const expired = useCallback(() => { for (const queue of queues.current.values()) queue.pause(); setSession(null); setGate({ kind: "login", notice: "로그인이 끝났습니다. 다시 로그인해 주세요." }); }, []);
+
+  useMainReturn({
+    active: gate.kind === "ready" && Boolean(session),
+    busy,
+    dirty: false,
+    subPath: "session",
+    onReturn: () => {
+      setError("");
+      setSession(null);
+    },
+  });
+  useMainReturn({
+    active: gate.kind === "ready" && !session && tab !== "today",
+    dirty: false,
+    subPath: tab !== "today" ? tab : undefined,
+    onReturn: () => setTab("today"),
+  });
 
   let body: React.ReactNode;
   if (gate.kind === "checking") body = <View style={layout.body}><T tone="muted">로그인 확인 중…</T></View>;

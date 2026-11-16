@@ -28,6 +28,14 @@ export function LoginScreen({ client, notice, onLoggedIn }: { client: EnglishCli
     catch (cause) { setError((cause instanceof ApiError && ERRORS[cause.code]) || "로그인하지 못했습니다. 다시 시도해 주세요."); }
     finally { setBusy(false); setPassword(""); }
   };
+  const devSubmit = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try { await onLoggedIn(await client.devLogin()); }
+    catch (cause) { setError((cause instanceof ApiError && ERRORS[cause.code]) || "개발 모드 접속에 실패했습니다."); }
+    finally { setBusy(false); }
+  };
   return <KeyboardAvoidingView style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.55)" }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
     <ScrollView contentContainerStyle={{ flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 16 }} keyboardShouldPersistTaps="handled">
       <View style={{ width: "100%", maxWidth: 360 }}><Card title="로그인">
@@ -41,6 +49,7 @@ export function LoginScreen({ client, notice, onLoggedIn }: { client: EnglishCli
         </Pressable>}
         {!!error && <T size={13.1} tone="error" selectable>{error}</T>}
         <Btn variant="primary" title={busy ? "로그인 중" : "로그인"} disabled={busy || !username.trim() || !password} onPress={() => void submit()} testID="login-submit" />
+        {__DEV__ && <Btn title={busy ? "접속 중" : "개발 모드: 로그인 없이 들어가기"} disabled={busy} onPress={() => void devSubmit()} testID="dev-login" />}
         <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(SITE_ORIGIN + "/")}><T size={13.1} tone="muted" style={{ textDecorationLine: "underline" }}>메인 페이지로</T></Pressable>
       </Card></View>
     </ScrollView>
