@@ -23,6 +23,8 @@ export function HomeScreen({ libraryApi, library, section, notify, books, bookId
   onStudy: (row: UnitRow) => void; onReview: (row: UnitRow) => void;
 }) {
   const [importing, setImporting] = useState(false);
+  // After the prompt is copied the same button becomes word input for the selected vocabulary.
+  const [copied, setCopied] = useState(false);
   const phone = !desktop;
   const selectedBook = books.find(book => book.id === bookId) ?? books[0];
   const visibleUnits = selectedBook?.units ?? [];
@@ -67,17 +69,19 @@ export function HomeScreen({ libraryApi, library, section, notify, books, bookId
   </>;
   const vocabulary = (library.books ?? []).find(book => book.id === selectedBook?.id && book.kind === "vocabulary");
   const actions: DropdownAction[] = [
-    { key: "prompt", title: "프롬프트 복사", testID: "copy-vocab-prompt", onPress: () => { void Clipboard.setStringAsync(buildEnglishImportPrompt(vocabulary ?? { id: "", title: "새 단어장", kind: "vocabulary", body: "", words: [] }, library.usedExamples)).then(() => notify("단어장 프롬프트 복사 완료"), cause => notify(String(cause), "error")); } },
-    { key: "add", title: "단어 추가", testID: "add-vocabulary", onPress: () => setImporting(true) },
+    copied
+      ? { key: "input", title: "단어 입력", testID: "input-vocab-words", onPress: () => setImporting(true) }
+      : { key: "prompt", title: "프롬프트 복사", testID: "copy-vocab-prompt", onPress: () => { void Clipboard.setStringAsync(buildEnglishImportPrompt(vocabulary ?? { id: "", title: "새 단어장", kind: "vocabulary", body: "", words: [] }, library.usedExamples)).then(() => { setCopied(true); notify("단어장 프롬프트 복사 완료"); }, cause => notify(String(cause), "error")); } },
+    { key: "add", title: "단어장 추가", testID: "add-vocabulary", onPress: () => setImporting(true) },
   ];
-  const select = <BookSelect label="단어장" books={books.map(book => ({ id: book.id, title: book.title }))} value={selectedBook?.id ?? ""} onChange={onBookChange} />;
+  const select = <BookSelect label="단어장" books={books.map(book => ({ id: book.id, title: book.title }))} value={selectedBook?.id ?? ""} onChange={id => { setCopied(false); onBookChange(id); }} />;
   return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={phone ? layout.phoneBody : layout.body}>
     {section === "bookshelf" ? <Bookshelf library={library} api={libraryApi} language="en" notify={notify} /> : <>
       {phone ? <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}><View style={{ flex: 1, minWidth: 0 }}>{select}</View><ActionDropdown actions={actions} accessibilityLabel="단어장 작업 메뉴" /></View>
-        : <View style={{ gap: 8 }}>{select}<View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>{actions.map(item => <Btn key={item.key} title={item.title} onPress={item.onPress} testID={item.testID} />)}</View></View>}
+        : <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}><View style={{ flex: 1, minWidth: 0 }}>{select}</View>{actions.map(item => <Btn key={item.key} title={item.title} onPress={item.onPress} testID={item.testID} style={{ minHeight: 44 }} />)}</View>}
       {content}
       <RootBrowser api={libraryApi} words={visibleUnits.flatMap(unit => unit.words)} />
     </>}
-    {importing && <VocabularyImport api={libraryApi} books={(library.books ?? []).filter(book => book.kind === "vocabulary")} bookId={vocabulary?.id ?? ""} usedExamples={library.usedExamples} onClose={() => setImporting(false)} onSaved={(id) => { void library.reload(); if (id) onBookChange(id); }} />}
+    {importing && <VocabularyImport api={libraryApi} books={(library.books ?? []).filter(book => book.kind === "vocabulary")} bookId={vocabulary?.id ?? ""} usedExamples={library.usedExamples} onClose={() => { setImporting(false); setCopied(false); }} onSaved={(id) => { void library.reload(); if (id) onBookChange(id); }} />}
   </ScrollView>;
 }
