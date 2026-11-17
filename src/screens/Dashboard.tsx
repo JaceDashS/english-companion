@@ -1,6 +1,6 @@
 import React, { useContext, useState } from "react";
 import { Pressable, View } from "react-native";
-import { MAX_STAGE, relativeDay, type UnitRow } from "../domain/dashboard";
+import { MAX_STAGE, recentUnits, relativeDay, type UnitRow } from "../domain/dashboard";
 import { Btn, Chip, Empty, gradient, Input, Meter, T, Theme, type Palette } from "../ui";
 
 type Accent = "accent" | "good" | "info" | "warn";
@@ -38,7 +38,7 @@ function useHover() {
 }
 
 export function RecentUnits({ rows, today, onOpen }: { rows: UnitRow[]; today: string; onOpen: (row: UnitRow) => void }) {
-  const recent = rows.filter(row => row.lastDate).sort((a, b) => b.lastDate.localeCompare(a.lastDate)).slice(0, 5);
+  const recent = recentUnits(rows);
   if (!recent.length) return <Empty>아직 학습 기록이 없습니다.</Empty>;
   return <View style={{ gap: 6 }}>{recent.map(row => <RecentRow key={row.unit.id} row={row} today={today} onOpen={onOpen} />)}</View>;
 }

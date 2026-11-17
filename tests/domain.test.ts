@@ -5,7 +5,7 @@ import test from "node:test";
 import { ContentError, parseBooks, parseContent } from "../src/content/content.ts";
 import raw from "../src/content/words.json" with { type: "json" };
 import { dueWords, grade, quizWords, sentenceOrder, summarizeUnit } from "../src/domain/study.ts";
-import { buildQueue, buildUnitRows, relativeDay, stageBuckets } from "../src/domain/dashboard.ts";
+import { buildQueue, buildUnitRows, recentUnits, relativeDay, stageBuckets } from "../src/domain/dashboard.ts";
 
 const word = (id: string, quiz = true) => ({
   id,
@@ -119,6 +119,11 @@ test("dashboard rows map units with due reviews, the next new unit, stage bucket
   assert.deepEqual(queue.learning.map((row) => row.unit.id), ["u2"]);
   assert.deepEqual(stageBuckets(units, progress).map((bucket) => bucket.count), [3, 0, 1, 0, 0, 0, 1]);
   assert.deepEqual(["2026-11-09", "2026-11-08", "2026-11-01"].map((date) => relativeDay(date, "2026-11-09")), ["오늘", "어제", "8일 전"]);
+  const sameDayRows = buildUnitRows(units, {
+    a: { stage: 1, due: "2026-11-10", lastResult: "PASS", updatedAt: "2026-11-09T01:00:00Z" },
+    c: { stage: 1, due: "2026-11-10", lastResult: "PASS", updatedAt: "2026-11-09T02:00:00Z" },
+  }, "2026-11-09");
+  assert.deepEqual(recentUnits(sameDayRows).map((row) => row.unit.id), ["u2", "u1"]);
 });
 
 

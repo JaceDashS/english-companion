@@ -52,6 +52,9 @@ test("persisted pending results survive reload and permanent rejection stays vis
 });
 test("optimistic failure lowers one stage with a zero floor and is due tomorrow", () => {
   const prior = { word: { stage: 4, due: "2026-11-20", lastResult: "PASS" as const, updatedAt: "" } };
-  assert.equal(optimisticResults(prior, [{ id: "word", result: "FAIL" }], "2026-11-30").word.stage, 3);
+  const failed = optimisticResults(prior, [{ id: "word", result: "FAIL" }], "2026-11-30");
+  assert.equal(failed.word.stage, 3);
+  assert.equal(failed.word.due, "2026-12-01");
+  assert.equal(failed.word.updatedAt.slice(0, 10), "2026-11-30");
   assert.equal(optimisticResults({}, [{ id: "word", result: "FAIL" }], "2026-11-30").word.due, "2026-12-01");
 });

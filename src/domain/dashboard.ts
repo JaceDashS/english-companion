@@ -19,6 +19,8 @@ export interface UnitRow {
   graduated: boolean;
   /** Latest account date a word of the unit was graded, or "" when never. */
   lastDate: string;
+  /** Latest ISO timestamp a word of the unit was graded, or "" when never. */
+  lastUpdatedAt: string;
   /** Average stage of started words, 0 when none. */
   averageStage: number;
 }
@@ -28,6 +30,7 @@ export function buildUnitRows(units: EnglishUnit[], progress: Progress, today: s
   return units.map((unit, index) => {
     const entries = unit.words.map((word) => progress[word.id]).filter(Boolean);
     const passes = entries.filter((entry) => entry.lastResult === "PASS").length;
+    const lastUpdatedAt = entries.reduce((latest, entry) => (entry.updatedAt > latest ? entry.updatedAt : latest), "");
     return {
       unit,
       position: index + 1,
@@ -37,10 +40,16 @@ export function buildUnitRows(units: EnglishUnit[], progress: Progress, today: s
       failCount: entries.filter((entry) => entry.lastResult === "FAIL").length,
       passRatio: entries.length ? passes / entries.length : 0,
       graduated: unit.words.length > 0 && unit.words.every((word) => (progress[word.id]?.stage ?? 0) >= MAX_STAGE),
-      lastDate: entries.reduce((latest, entry) => (entry.updatedAt.slice(0, 10) > latest ? entry.updatedAt.slice(0, 10) : latest), ""),
+      lastDate: lastUpdatedAt.slice(0, 10),
+      lastUpdatedAt,
       averageStage: entries.length ? entries.reduce((sum, entry) => sum + entry.stage, 0) / entries.length : 0,
     };
   });
+}
+
+/** Most recently studied units, ordered by full timestamp so same-day updates rise to the top. */
+export function recentUnits(rows: UnitRow[], limit = 5): UnitRow[] {
+  return rows.filter((row) => row.lastDate).sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt)).slice(0, limit);
 }
 
 /** Today's queue: units with due reviews, and the first unit that still has unstarted words. */

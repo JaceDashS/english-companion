@@ -12,7 +12,7 @@ export function optimisticResults(previous: Progress, results: ResultJob["result
     const stage = result === "FAIL" ? Math.max(0, (previous[id]?.stage ?? 0) - 1) : Math.min(6, (previous[id]?.stage ?? 0) + 1);
     const due = new Date(date + "T00:00:00Z");
     due.setUTCDate(due.getUTCDate() + (result === "FAIL" ? 1 : intervals[stage - 1]));
-    return [id, { stage, due: due.toISOString().slice(0, 10), lastResult: result, updatedAt: new Date().toISOString() }];
+    return [id, { stage, due: due.toISOString().slice(0, 10), lastResult: result, updatedAt: `${date}${new Date().toISOString().slice(10)}` }];
   }));
 }
 
