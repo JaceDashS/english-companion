@@ -1,22 +1,28 @@
 import { RootBrowser } from "../RootBrowser";
-import { ReadingLibrary } from "../ReadingLibrary";
+import { ActionDropdown, type DropdownAction } from "../ActionDropdown";
+import { BookSelect } from "../BookSelect";
+import { Bookshelf, type ReadingLibraryModel } from "../ReadingLibrary";
+import { VocabularyImport } from "../VocabularyImport";
+import { buildEnglishImportPrompt } from "../englishImport";
+import type { HeaderSection } from "../Chrome";
 import type { LibraryApi } from "../readingWords";
+import * as Clipboard from "expo-clipboard";
 import React, { useState } from "react";
 import { ScrollView, View } from "react-native";
 import type { Progress } from "../api/types";
 import type { EnglishBook, EnglishUnit } from "../content/content";
 import { buildQueue, buildUnitRows, stageBuckets, type UnitRow } from "../domain/dashboard";
-import { Card, Empty, layout, T } from "../ui";
+import { Btn, Card, Empty, layout, T } from "../ui";
 import { ProgressPanel, RecentUnits, StageChart, Stats, UnitCard, UnitGrid } from "./Dashboard";
 
 export type HomeTab = "today" | "days" | "progress";
 
 /** Today, Unit and progress tabs in the Japanese Companion composition, built from bundled units and account progress. */
-export function HomeScreen({ libraryApi, onLibraryChanged, books, bookId, onBookChange, units, progress, today, desktop, tab, onStudy, onReview }: {
-  libraryApi: LibraryApi; onLibraryChanged: () => void; books: EnglishBook[]; bookId: string; onBookChange: (id: string) => void; units: EnglishUnit[]; progress: Progress; today: string; desktop: boolean; tab: HomeTab;
+export function HomeScreen({ libraryApi, library, section, notify, books, bookId, onBookChange, units, progress, today, desktop, tab, onStudy, onReview }: {
+  libraryApi: LibraryApi; library: ReadingLibraryModel; section: HeaderSection; notify: (text: string, tone?: string) => void; books: EnglishBook[]; bookId: string; onBookChange: (id: string) => void; units: EnglishUnit[]; progress: Progress; today: string; desktop: boolean; tab: HomeTab;
   onStudy: (row: UnitRow) => void; onReview: (row: UnitRow) => void;
 }) {
-  const [reading, setReading] = useState(false);
+  const [importing, setImporting] = useState(false);
   const phone = !desktop;
   const selectedBook = books.find(book => book.id === bookId) ?? books[0];
   const visibleUnits = selectedBook?.units ?? [];
@@ -59,9 +65,19 @@ export function HomeScreen({ libraryApi, onLibraryChanged, books, bookId, onBook
       </View>
     </View>
   </>;
+  const vocabulary = (library.books ?? []).find(book => book.id === selectedBook?.id && book.kind === "vocabulary");
+  const actions: DropdownAction[] = [
+    { key: "prompt", title: "프롬프트 복사", testID: "copy-vocab-prompt", onPress: () => { void Clipboard.setStringAsync(buildEnglishImportPrompt(vocabulary ?? { id: "", title: "새 단어장", kind: "vocabulary", body: "", words: [] }, library.usedExamples)).then(() => notify("단어장 프롬프트 복사 완료"), cause => notify(String(cause), "error")); } },
+    { key: "add", title: "단어 추가", testID: "add-vocabulary", onPress: () => setImporting(true) },
+  ];
+  const select = <BookSelect label="단어장" books={books.map(book => ({ id: book.id, title: book.title }))} value={selectedBook?.id ?? ""} onChange={onBookChange} />;
   return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={phone ? layout.phoneBody : layout.body}>
-    <ReadingLibrary api={libraryApi} language="en" allowVocabulary onChanged={onLibraryChanged} catalog={{ books, value: selectedBook?.id ?? "", onChange: onBookChange, onReadingChange: setReading }} />
-    {!reading && <><RootBrowser api={libraryApi} words={visibleUnits.flatMap(unit => unit.words)} />{content}</>}
-
+    {section === "bookshelf" ? <Bookshelf library={library} api={libraryApi} language="en" notify={notify} /> : <>
+      {phone ? <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}><View style={{ flex: 1, minWidth: 0 }}>{select}</View><ActionDropdown actions={actions} accessibilityLabel="단어장 작업 메뉴" /></View>
+        : <View style={{ gap: 8 }}>{select}<View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>{actions.map(item => <Btn key={item.key} title={item.title} onPress={item.onPress} testID={item.testID} />)}</View></View>}
+      {content}
+      <RootBrowser api={libraryApi} words={visibleUnits.flatMap(unit => unit.words)} />
+    </>}
+    {importing && <VocabularyImport api={libraryApi} books={(library.books ?? []).filter(book => book.kind === "vocabulary")} bookId={vocabulary?.id ?? ""} usedExamples={library.usedExamples} onClose={() => setImporting(false)} onSaved={(id) => { void library.reload(); if (id) onBookChange(id); }} />}
   </ScrollView>;
 }

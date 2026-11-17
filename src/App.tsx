@@ -15,8 +15,9 @@ import { HomeScreen } from "./screens/HomeScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { SessionScreen, type SessionStart } from "./screens/SessionScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
-import { Btn, Card, Device, gradient, layout, palettes, T, Theme } from "./ui";
-import { Chrome, type Tab } from "./Chrome";
+import { Btn, Card, Device, gradient, layout, palettes, T, Theme, Toast } from "./ui";
+import { Loading, ReaderScreen, useReadingLibrary } from "./ReadingLibrary";
+import { Chrome, type HeaderSection, type Tab } from "./Chrome";
 import { isDesktopLayout } from "./responsive";
 import { BrowserTheme } from "./BrowserTheme";
 import { useMainReturn } from "./useMainReturn";
@@ -59,12 +60,19 @@ export default function App() {
   }, [delivery, resultQueue, client]);
   useEffect(() => () => { for (const queue of queues.current.values()) queue.pause(); }, []);
   const desktop = isDesktopLayout(width, height, display.device);
-  const [personalMaterials, setPersonalMaterials] = useState<LibraryBook[]>([]);
+  const [section, setSection] = useState<HeaderSection>("vocabulary");
+  const [toast, setToast] = useState<{ text: string; tone?: string } | null>(null);
+  const notify = useCallback((text: string, tone?: string) => setToast({ text, tone }), []);
+  useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(null), 5000); return () => clearTimeout(timer); }, [toast]);
   const libraryApi: LibraryApi = useCallback((endpoint, body, query) => client.libraryRequest(endpoint, body, query), [client]);
-  const books = useMemo(() => [...BOOKS, ...personalMaterials.filter(book => book.kind === "vocabulary").map(book => ({ id: book.id, title: book.title, units: [{ id: book.id, title: book.title, words: book.words }] }))], [personalMaterials]);
+  const library = useReadingLibrary(libraryApi, notify, gate.kind === "ready");
+  const personalMaterials: LibraryBook[] = useMemo(() => library.books ?? [], [library.books]);
+  const books = useMemo(() => [...BOOKS.filter(book => book.units.some(unit => unit.words.length)), ...personalMaterials.filter(book => book.kind === "vocabulary").map(book => ({ id: book.id, title: book.title, units: [{ id: book.id, title: book.title, words: book.words }] }))], [personalMaterials]);
   const allUnits = useMemo(() => books.flatMap(book => book.units), [books]);
   const visibleUnits = (books.find(book => book.id === bookId) ?? books[0])?.units ?? [];
-  const reloadLibrary = useCallback(() => { void libraryApi<{ books: LibraryBook[] }>("library").then(data => setPersonalMaterials(data.books), () => setError("교재 목록을 새로 불러오지 못했습니다.")); }, [libraryApi]);
+  // The last selected vocabulary is part of the account reader state, so every device opens the same one.
+  useEffect(() => { const saved = library.reading.vocabularyId; if (saved && books.some(book => book.id === saved)) setBookId(saved); else if (!books.some(book => book.id === bookId) && books[0]) setBookId(books[0].id); }, [library.reading.vocabularyId, books]);
+  const chooseVocabulary = (id: string) => { setBookId(id); library.setVocabulary(id); };
   const c = palettes[display.theme];
 
   useEffect(() => { readDisplay().then(setDisplay, () => undefined); }, []);
@@ -76,8 +84,6 @@ export default function App() {
     try {
       const clock = await client.bootstrap();
       const progress = await client.progress();
-      const library = await client.libraryRequest<{ books: LibraryBook[] }>("library");
-      setPersonalMaterials(library.books);
       if (userId.current && userId.current !== user.id) { setSession(null); setTab("today"); setBookId(BOOKS[0]?.id ?? ""); }
       for (const queue of queues.current.values()) queue.pause();
       let queue = queues.current.get(user.id);
@@ -151,14 +157,15 @@ export default function App() {
   });
 
   let body: React.ReactNode;
-  if (gate.kind === "checking") body = <View style={layout.body}><T tone="muted">로그인 확인 중…</T></View>;
+  if (gate.kind === "checking") body = <Loading text="로그인 확인 중…" />;
   else if (gate.kind === "login") body = <LoginScreen client={client} notice={gate.notice} onLoggedIn={(user) => enter(user)} />;
   else if (gate.kind === "blocked") body = <View style={[layout.body, { maxWidth: 520 }]}><Card title="English Companion"><T>{gate.message}</T><Btn variant="primary" title="메인 페이지로" onPress={() => void Linking.openURL(SITE_ORIGIN + "/")} /></Card></View>;
-  else if (session) body = <SessionScreen libraryApi={libraryApi} key={session.title + session.words.map((word) => word.id).join()} start={session} progress={gate.progress} isPhone={!desktop} busy={busy} error={error} onSave={save} onClose={() => { setError(""); setSession(null); }} />;
-  else body = <Chrome desktop={desktop} tab={tab} today={today} dueCount={visibleUnits.filter((unit) => unit.words.some((word) => word.quiz && gate.progress[word.id] && gate.progress[word.id].due <= today)).length} onNavigate={setTab}>
+  else if (library.openId) body = <ReaderScreen library={library} api={libraryApi} language="en" notify={notify} />;
+  else if (session) body = <SessionScreen libraryApi={libraryApi} vocabularyWords={allUnits.flatMap(unit => unit.words)} key={session.title + session.words.map((word) => word.id).join()} start={session} progress={gate.progress} isPhone={!desktop} busy={busy} error={error} onSave={save} onClose={() => { setError(""); setSession(null); }} />;
+  else body = <Chrome desktop={desktop} section={section} onSectionChange={(next) => { setSection(next); if (tab === "settings") setTab("today"); }} tab={tab} today={today} dueCount={visibleUnits.filter((unit) => unit.words.some((word) => word.quiz && gate.progress[word.id] && gate.progress[word.id].due <= today)).length} onNavigate={setTab}>
     {tab === "settings"
       ? <SettingsScreen client={client} phone={!desktop} busy={busy} error={error} display={display} onDisplay={changeDisplay} onLogout={() => void logout()} onExpired={expired} />
-      : <HomeScreen libraryApi={libraryApi} onLibraryChanged={reloadLibrary} key={gate.user.id} books={books} bookId={bookId} onBookChange={setBookId} units={allUnits} progress={gate.progress} today={today} desktop={desktop} tab={tab}
+      : <HomeScreen libraryApi={libraryApi} library={library} section={section} notify={notify} key={gate.user.id} books={books} bookId={bookId} onBookChange={chooseVocabulary} units={allUnits} progress={gate.progress} today={today} desktop={desktop} tab={tab}
         onStudy={(row) => setSession({ title: row.unit.title, words: row.unit.words, review: false })}
         onReview={(row) => setSession({ title: row.unit.title + " 복습", words: row.dueWords, review: true })} />}
   </Chrome>;
@@ -173,6 +180,7 @@ export default function App() {
         {delivery.items.filter(job => job.status === "failed").map(job => <View key={job.id}><T size={12} tone="error">전송 거절: {job.error}</T><Btn title="재전송" onPress={() => resultQueue?.retry(job.id)} /></View>)}
       </View>}
       {body}
+      {toast && <Toast text={toast.text} tone={toast.tone} phone={!desktop && !session && !library.openId} />}
     </SafeAreaView>
   </Device.Provider></Theme.Provider></SafeAreaProvider>;
 }

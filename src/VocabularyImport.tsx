@@ -1,29 +1,41 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { BookSelect } from './BookSelect';
 import { Btn, Input, Sheet, T } from './ui';
 import { buildEnglishImportPrompt } from './englishImport';
 import type { LibraryApi, LibraryBook } from './readingWords';
 
-/** Copy a generator prompt and validate the generated JSON on the server before adding any data. */
-export function VocabularyImport({ api, book, usedExamples, onClose, onSaved }: { api: LibraryApi; book: LibraryBook; usedExamples: Record<string, string[]>; onClose: () => void; onSaved: () => void }) {
+const NEW = '__new__';
+
+/** Add words to a vocabulary, or to a new one, from generated JSON validated on the server. */
+export function VocabularyImport({ api, books, bookId, usedExamples, onClose, onSaved }: { api: LibraryApi; books: LibraryBook[]; bookId: string; usedExamples: Record<string, string[]>; onClose: () => void; onSaved: (bookId: string) => void }) {
+  const [target, setTarget] = useState(books.some(book => book.id === bookId) ? bookId : NEW);
+  const [title, setTitle] = useState('');
   const [payload, setPayload] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const book = books.find(entry => entry.id === target);
   const run = async (work: () => Promise<void>) => {
     if (busy) return; setBusy(true); setMessage('');
     try { await work(); } catch (error) { setMessage(error instanceof Error ? error.message : '처리하지 못했습니다.'); }
     finally { setBusy(false); }
   };
-  return <Sheet title={`${book.title} · 단어와 문제 가져오기`} onClose={() => { if (!busy) onClose(); }}><View style={{ gap: 12 }}>
-    <T>프롬프트를 복사해 AI에 보낸 뒤 단어 목록을 보내세요. 받은 결과를 붙여 넣으면 단어·어근·제공 예문·문제 세트를 함께 가져옵니다.</T>
-    <T size={12} tone="dim">보충할 때도 같은 버튼을 사용하세요. 이미 쓴 문제 예문은 다시 출제하지 않습니다. 내 예문은 변경되지 않습니다.</T>
-    <Btn title="프롬프트 복사" disabled={busy} onPress={() => void run(async () => { await Clipboard.setStringAsync(buildEnglishImportPrompt(book, usedExamples)); setMessage('프롬프트를 복사했습니다.'); })} />
-    <Btn title="클립보드에서 붙여넣기" disabled={busy} onPress={() => void run(async () => setPayload(await Clipboard.getStringAsync()))} />
-    <Input multiline label="AI 결과 붙여넣기" placeholder="받은 JSON을 붙여 넣으세요." value={payload} onChangeText={setPayload} />
-    <Btn title={busy ? '처리 중…' : '가져오기'} disabled={busy || !payload.trim()} onPress={() => void run(async () => {
-      const { result } = await api<{ result: { added: number; updated: number; setsAdded: number } }>('library/import', { bookId: book.id, payload });
-      setMessage(`새 단어 ${result.added}개 · 기존 단어 ${result.updated}개 · 새 문제 ${result.setsAdded}세트`); setPayload(''); onSaved();
+  return <Sheet title="단어 추가" onClose={() => { if (!busy) onClose(); }}><View style={{ gap: 12 }}>
+    <T size={13} tone="muted">1. 프롬프트를 복사해 외부 AI에 보냅니다. 2. 단어 목록을 형식 없이 보냅니다. 3. AI가 출력한 JSON을 붙여 넣습니다. 단어마다 뜻, 어근, 제공 예문 5개와 문제 세트를 함께 가져옵니다.</T>
+    <BookSelect label="넣을 단어장" books={[...books.map(entry => ({ id: entry.id, title: entry.title })), { id: NEW, title: '새 단어장 만들기' }]} value={target} onChange={setTarget} />
+    {target === NEW && <Input label="새 단어장 이름" value={title} onChangeText={setTitle} placeholder="단어장 이름" />}
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      <Btn title="프롬프트 복사" disabled={busy} onPress={() => void run(async () => { await Clipboard.setStringAsync(buildEnglishImportPrompt(book ?? { id: '', title: title || '새 단어장', kind: 'vocabulary', body: '', words: [] }, usedExamples)); setMessage('프롬프트를 복사했습니다.'); })} />
+      <Btn title="클립보드에서 붙여넣기" disabled={busy} onPress={() => void run(async () => setPayload(await Clipboard.getStringAsync()))} />
+    </View>
+    <Input multiline label="단어 JSON" placeholder='{ "format": "jace-s.english-words", ... }' value={payload} onChangeText={setPayload} />
+    <T size={12} tone="dim">같은 단어장에 이미 있는 단어는 새로 만들지 않고 새 문제 세트만 보충합니다. 내 메모는 바뀌지 않습니다.</T>
+    <Btn variant="primary" title={busy ? '처리 중…' : '가져오기'} disabled={busy || !payload.trim() || (target === NEW && !title.trim())} onPress={() => void run(async () => {
+      const id = target === NEW ? (await api<{ book: LibraryBook }>('library/save', { kind: 'vocabulary', title, body: '', words: [] })).book.id : target;
+      if (target === NEW) setTarget(id);
+      const { result } = await api<{ result: { added: number; updated: number; setsAdded: number } }>('library/import', { bookId: id, payload });
+      setMessage(`새 단어 ${result.added}개 · 기존 단어 ${result.updated}개 · 새 문제 ${result.setsAdded}세트`); setPayload(''); onSaved(id);
     })} />
     {!!message && <T>{message}</T>}
   </View></Sheet>;

@@ -47,8 +47,8 @@ function NavButton({ title, label, phone, primary = false, disabled, onPress, te
 }
 
 /** Study and usage-quiz session in the Japanese Companion layout: top bar, word tiles on PC or a sheet on phones, bottom navigator and a save step. */
-export function SessionScreen({ libraryApi, start, progress, isPhone, busy, error, onSave, onClose }: {
-  libraryApi: LibraryApi; start: SessionStart; progress: Progress; isPhone: boolean; busy: boolean; error: string;
+export function SessionScreen({ libraryApi, vocabularyWords = [], start, progress, isPhone, busy, error, onSave, onClose }: {
+  libraryApi: LibraryApi; vocabularyWords?: EnglishWord[]; start: SessionStart; progress: Progress; isPhone: boolean; busy: boolean; error: string;
   onSave: (results: Record<string, StudyResult>) => boolean; onClose: () => void;
 }) {
   const c = useContext(Theme);
@@ -65,8 +65,8 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
   const [chosen, setChosen] = useState<Record<string, number>>({});
   const [results, setResults] = useState<Record<string, StudyResult>>({});
   const [wordNote, setWordNote] = useState<string | null>(null);
-  const [meaning, setMeaning] = useState(true);
-  const [example, setExample] = useState(true);
+  const [rootSheet, setRootSheet] = useState<string | null>(null);
+  const notes = useWordNotes(libraryApi);
   const [panel, setPanel] = useState<"items" | "hide">("items");
   const [sheet, setSheet] = useState(false);
   const list = phase === "quiz" ? quizList : phase === "corrections" ? start.words.filter(word => results[word.id] === "FAIL") : start.words;
@@ -115,7 +115,22 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
   const graded = Object.keys(results).length;
   const last = progress;
 
-  const noteControl = word && (phase === "study" || Boolean(result)) ? <Btn title="뜻과 내 예문" onPress={() => setWordNote(word.word)} /> : null;
+  const roots = word?.roots ?? [];
+  const sameRoot = (root: string) => uniqueWords(vocabularyWords.filter(entry => entry.word.toLowerCase() !== word?.word.toLowerCase() && (entry.roots ?? []).some(value => value.toLowerCase() === root.toLowerCase())));
+  const rootRow = roots.length > 0 ? <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center", alignItems: "center" }}>
+    <T size={12.5} tone="dim">어근</T>
+    {roots.map(root => <Btn key={root} variant="ghost" title={`${root} · 같은 어근 ${sameRoot(root).length}`} label={`${root} 어근이 같은 단어`} onPress={() => setRootSheet(root)} />)}
+  </View> : null;
+  const studyNotes = word ? <>
+    <NoteEditor key={word.id} label="내 메모" value={notes.get(word.word)} onSave={value => notes.save(word.word, value)} />
+    <View style={{ gap: 8 }}>
+      <T size={11.8} tone="dim" weight="600">제공 예문</T>
+      <View style={{ padding: 14, borderWidth: 1, borderStyle: "dashed", borderColor: c.border, borderRadius: 11, gap: 8 }}>
+        {exampleLines(word.decomposition ?? word.example).map((line, at) => <Text key={at} selectable style={{ color: c.text, fontSize: 16, lineHeight: 26, fontFamily: fonts.serif }}>{line}</Text>)}
+        {!exampleLines(word.decomposition ?? word.example).length && <T tone="dim">제공 예문 없음</T>}
+      </View>
+    </View>
+  </> : null;
 
   const tiles = <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
     {list.map((entry, position) => {
@@ -134,11 +149,10 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
         <IdChip id={word.id} />{last[word.id]?.lastResult === "PASS" && <Chip tone="pass">지난 정답</Chip>}{last[word.id]?.lastResult === "FAIL" && <Chip tone="fail">지난 오답</Chip>}
       </View>
       <Text selectable style={{ color: c.text, fontSize: wordSize, lineHeight: wordSize * 1.25, fontFamily: fonts.serif, textAlign: "center" }}>{word.word}</Text>
-      {meaning && <T size={16.3} tone="muted" selectable style={{ textAlign: "center" }}>{word.meaning}</T>}
-      {example && <Text selectable style={{ color: c.text, fontSize: 17, lineHeight: 28, fontFamily: fonts.serif, fontStyle: "italic", textAlign: "center", maxWidth: 560 }}>{word.decomposition ?? word.example}</Text>}
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center", alignItems: "center" }}><Switch on={meaning} onToggle={() => setMeaning(!meaning)} label="뜻" /><Switch on={example} onToggle={() => setExample(!example)} label="제공 예문" /></View>
-      {noteControl}
+      <T size={16.3} tone="muted" selectable style={{ textAlign: "center" }}>{word.meaning}</T>
+      {rootRow}
     </WordCard>}
+    {word && (phase === "study" || phase === "corrections") && studyNotes}
     {word?.quiz && phase === "quiz" && <>
       <View style={{ flexDirection: "row" }}><IdChip id={word.id} /></View>
       <View style={{ alignItems: "center", gap: 6, paddingVertical: 20, paddingHorizontal: 18, borderWidth: 1, borderColor: c.border, borderRadius: 16, backgroundColor: c.panel }}>
@@ -149,6 +163,7 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
       <View style={{ gap: 8 }}>{orders[word.id].map((original, position) => <Choice key={original} index={position} text={word.quiz!.sentences[original]} phone={isPhone} disabled={!!result} selected={chosen[word.id] === original}
         state={result ? (original === word.quiz!.answer ? "correct" : chosen[word.id] === original ? "wrong" : undefined) : undefined} onPress={() => choose(original)} />)}</View>
       {result && <Verdict pass={result === "PASS"}><T size={14.4} weight="600" style={{ color: result === "PASS" ? c.good : c.error }}>{result === "PASS" ? "정답입니다." : "오답입니다."}</T><T size={13.4} tone="muted" selectable>뜻: {word.meaning}</T></Verdict>}
+      {result && <Btn variant="ghost" title="단어 노트 보기" onPress={() => setWordNote(word.word)} />}
     </>}
     {!!error && phase !== "done" && <T tone="error">{error}</T>}
     {phase === "done" && <WordCard>
@@ -191,5 +206,58 @@ export function SessionScreen({ libraryApi, start, progress, isPhone, busy, erro
       <NavButton label="다음" title="→" phone={isPhone} primary disabled={!canNext} onPress={next} testID={phase === "quiz" ? "quiz-next" : "study-next"} />
     </View>}
     {sheet && <Sheet title={`${start.title} 목록`} onClose={() => setSheet(false)}>{tiles}</Sheet>}
-  {wordNote && <WordLookup key={wordNote} api={libraryApi} word={wordNote} onClose={() => setWordNote(null)} />}</View>;
+  {wordNote && <WordLookup key={wordNote} api={libraryApi} word={wordNote} language="en" onClose={() => setWordNote(null)} />}
+    {rootSheet && <Sheet title={`어근 ${rootSheet} · 같은 어근 단어`} onClose={() => setRootSheet(null)}>
+      {sameRoot(rootSheet).length ? sameRoot(rootSheet).map(entry => <Pressable key={entry.id} accessibilityRole="button" accessibilityLabel={`${entry.word} 단어 노트`} onPress={() => setWordNote(entry.word)} style={{ gap: 3, padding: 12, borderWidth: 1, borderColor: c.border, borderRadius: 10, backgroundColor: c.raised }}><T size={17} serif weight="700">{entry.word}</T><T size={13} tone="muted">{entry.meaning}</T></Pressable>) : <Empty>이 어근을 가진 다른 단어가 아직 없습니다.</Empty>}
+    </Sheet>}</View>;
+}
+
+/** Provided example text as display lines; numbered lines keep their numbers. */
+function exampleLines(text: string): string[] {
+  return text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+}
+function uniqueWords(words: EnglishWord[]): EnglishWord[] {
+  const seen = new Set<string>();
+  return words.filter(word => { const key = word.word.toLowerCase(); if (seen.has(key)) return false; seen.add(key); return true; });
+}
+
+/** Account notes per word, loaded on demand; a save shows at once and is shared by every vocabulary and book. */
+function useWordNotes(api: LibraryApi) {
+  const [notes, setNotes] = useState<Record<string, string | undefined>>({});
+  const requested = useRef(new Set<string>());
+  const key = (word: string) => word.normalize("NFKC").trim().toLowerCase();
+  return {
+    get(word: string) {
+      const id = key(word);
+      if (!requested.current.has(id)) {
+        requested.current.add(id);
+        void api<{ detail: { note: string } | null }>("word", undefined, { word }).then(result => setNotes(previous => ({ ...previous, [id]: result.detail?.note ?? "" })), () => requested.current.delete(id));
+      }
+      return notes[id];
+    },
+    async save(word: string, note: string) {
+      const id = key(word);
+      const before = notes[id];
+      setNotes(previous => ({ ...previous, [id]: note }));
+      try { await api("word-note", { word, note }); }
+      catch (cause) { setNotes(previous => ({ ...previous, [id]: before })); throw cause; }
+    },
+  };
+}
+
+/** Personal note shown as text; pressing it opens an editor that saves when finished. */
+function NoteEditor({ label, value, onSave }: { label: string; value: string | undefined; onSave: (value: string) => Promise<void> }) {
+  const c = useContext(Theme);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [error, setError] = useState("");
+  const finish = () => { setEditing(false); if (draft === (value ?? "")) return; void onSave(draft).catch(cause => setError(cause instanceof Error ? cause.message : "메모를 저장하지 못했습니다.")); };
+  return <View style={{ gap: 8 }}>
+    <T size={11.8} tone="dim" weight="600">{label}</T>
+    {editing ? <><Input multiline autoFocus label={label} value={draft} onChangeText={setDraft} onBlur={finish} placeholder="이 단어로 직접 만든 예문이나 메모" /><View style={{ flexDirection: "row" }}><Btn title="저장" onPress={finish} /></View></>
+      : <Pressable accessibilityRole="button" accessibilityLabel={`${label} 편집`} disabled={value === undefined} onPress={() => { setDraft(value ?? ""); setError(""); setEditing(true); }} style={{ padding: 14, borderWidth: 1, borderStyle: "dashed", borderColor: c.border, borderRadius: 11 }}>
+        <T selectable tone={value ? "text" : "dim"} style={{ lineHeight: 24 }}>{value === undefined ? "불러오는 중…" : value || "눌러서 메모 입력"}</T>
+      </Pressable>}
+    {!!error && <T tone="error">{error}</T>}
+  </View>;
 }

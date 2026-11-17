@@ -1,5 +1,5 @@
 import { buildEnglishImportPrompt, groupWordsByRoot } from "../src/englishImport";
-import { segmentProse } from "../src/readingWords";
+import { proseTokens } from "../src/readingWords";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ContentError, parseBooks, parseContent } from "../src/content/content.ts";
@@ -122,14 +122,10 @@ test("dashboard rows map units with due reviews, the next new unit, stage bucket
 });
 
 
-test("prose tokens preserve text and include unknown word actions", () => {
-  for (const [language, text] of [["en", "A window, Zorblax!\nBird's song."], ["ja", "素直な猫。\n未登録語も読む。"]] as const) {
-    const parts = segmentProse(text, language);
-    assert.equal(parts.map(part => part.text).join(""), text);
-    assert.ok(parts.some(part => part.word));
-    assert.ok(parts.filter(part => part.word).every(part => part.text.trim().length > 0));
-    if (language === "en") assert.ok(parts.some(part => part.word && part.text === "Zorblax"));
-  }
+test("without server tokens no prose word is selectable", () => {
+  assert.deepEqual(proseTokens({ body: "A window." }), [{ text: "A window.", word: false }]);
+  const tokens = [{ text: "A ", word: false }, { text: "window", word: true }, { text: ".", word: false }];
+  assert.equal(proseTokens({ body: "A window.", tokens }), tokens);
 });
 
 

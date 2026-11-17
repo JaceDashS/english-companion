@@ -149,7 +149,7 @@ export class EnglishClient {
   }
   /** Account-scoped books, word lookups and unique notes over the existing serialized transport. */
   libraryRequest<T>(endpoint: string, body?: unknown, query?: Record<string, string>): Promise<T> {
-    if (!["library", "library/save", "library/import", "quiz/take", "word", "word-note"].includes(endpoint)) return Promise.reject(new Error("Invalid library route"));
+    if (!["library", "library/save", "library/append", "library/state", "library/import", "quiz/take", "word", "word-note"].includes(endpoint)) return Promise.reject(new Error("Invalid library route"));
     const account = this.user?.id;
     return this.serialize(async () => {
       if (!account || account !== this.user?.id) throw new ApiError(401, "SESSION_EXPIRED");
