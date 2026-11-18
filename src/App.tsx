@@ -73,6 +73,16 @@ export default function App() {
   // The last selected vocabulary is part of the account reader state, so every device opens the same one.
   useEffect(() => { const saved = library.reading.vocabularyId; if (saved && books.some(book => book.id === saved)) setBookId(saved); else if (!books.some(book => book.id === bookId) && books[0]) setBookId(books[0].id); }, [library.reading.vocabularyId, books]);
   const chooseVocabulary = (id: string) => { setBookId(id); library.setVocabulary(id); };
+  // The account's last section opens again once per sign-in: a visit that ended in the bookshelf starts there.
+  const sectionRestoredFor = useRef("");
+  const signedInId = gate.kind === "ready" ? gate.user.id : "";
+  useEffect(() => {
+    if (!signedInId || !library.loaded || sectionRestoredFor.current === signedInId) return;
+    sectionRestoredFor.current = signedInId;
+    setSection(library.reading.section === "bookshelf" ? "bookshelf" : "vocabulary");
+  }, [signedInId, library.loaded, library.reading.section]);
+  const changeSection = (next: HeaderSection) => { setSection(next); library.setSection(next); };
+  const goHome = () => { changeSection("vocabulary"); setTab("today"); };
   const c = palettes[display.theme];
 
   useEffect(() => { readDisplay().then(setDisplay, () => undefined); }, []);
@@ -162,7 +172,7 @@ export default function App() {
   else if (gate.kind === "blocked") body = <View style={[layout.body, { maxWidth: 520 }]}><Card title="English Companion"><T>{gate.message}</T><Btn variant="primary" title="메인 페이지로" onPress={() => void Linking.openURL(SITE_ORIGIN + "/")} /></Card></View>;
   else if (library.openId) body = <ReaderScreen library={library} api={libraryApi} language="en" notify={notify} />;
   else if (session) body = <SessionScreen libraryApi={libraryApi} vocabularyWords={allUnits.flatMap(unit => unit.words)} key={session.title + session.words.map((word) => word.id).join()} start={session} progress={gate.progress} isPhone={!desktop} busy={busy} error={error} onSave={save} onClose={() => { setError(""); setSession(null); }} />;
-  else body = <Chrome desktop={desktop} section={section} onSectionChange={(next) => { setSection(next); if (tab === "settings") setTab("today"); }} tab={tab} today={today} dueCount={visibleUnits.filter((unit) => unit.words.some((word) => word.quiz && gate.progress[word.id] && gate.progress[word.id].due <= today)).length} onNavigate={setTab}>
+  else body = <Chrome desktop={desktop} section={section} onSectionChange={(next) => { changeSection(next); if (tab === "settings") setTab("today"); }} onHome={goHome} tab={tab} today={today} dueCount={visibleUnits.filter((unit) => unit.words.some((word) => word.quiz && gate.progress[word.id] && gate.progress[word.id].due <= today)).length} onNavigate={setTab}>
     {tab === "settings"
       ? <SettingsScreen client={client} phone={!desktop} busy={busy} error={error} display={display} onDisplay={changeDisplay} onLogout={() => void logout()} onExpired={expired} />
       : <HomeScreen libraryApi={libraryApi} library={library} section={section} notify={notify} key={gate.user.id} books={books} bookId={bookId} onBookChange={chooseVocabulary} units={allUnits} progress={gate.progress} today={today} desktop={desktop} tab={tab}
