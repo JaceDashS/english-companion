@@ -206,7 +206,7 @@ export function SessionScreen({ libraryApi, vocabularyWords = [], start, progres
       <NavButton label="다음" title="→" phone={isPhone} primary disabled={!canNext} onPress={next} testID={phase === "quiz" ? "quiz-next" : "study-next"} />
     </View>}
     {sheet && <Sheet title={`${start.title} 목록`} onClose={() => setSheet(false)}>{tiles}</Sheet>}
-  {wordNote && <WordLookup key={wordNote} api={libraryApi} word={wordNote} language="en" onClose={() => setWordNote(null)} />}
+  {wordNote && <WordLookup key={wordNote} api={libraryApi} word={wordNote} language="en" onClose={() => setWordNote(null)} onNoteSaved={notes.setLocal} />}
     {rootSheet && <Sheet title={`어근 ${rootSheet} · 같은 어근 단어`} onClose={() => setRootSheet(null)}>
       {sameRoot(rootSheet).length ? sameRoot(rootSheet).map(entry => <Pressable key={entry.id} accessibilityRole="button" accessibilityLabel={`${entry.word} 단어 노트`} onPress={() => setWordNote(entry.word)} style={{ gap: 3, padding: 12, borderWidth: 1, borderColor: c.border, borderRadius: 10, backgroundColor: c.raised }}><T size={17} serif weight="700">{entry.word}</T><T size={13} tone="muted">{entry.meaning}</T></Pressable>) : <Empty>이 어근을 가진 다른 단어가 아직 없습니다.</Empty>}
     </Sheet>}</View>;
@@ -234,6 +234,11 @@ function useWordNotes(api: LibraryApi) {
         void api<{ detail: { note: string } | null }>("word", undefined, { word }).then(result => setNotes(previous => ({ ...previous, [id]: result.detail?.note ?? "" })), () => requested.current.delete(id));
       }
       return notes[id];
+    },
+    setLocal(word: string, note: string) {
+      const id = key(word);
+      requested.current.add(id);
+      setNotes(previous => ({ ...previous, [id]: note }));
     },
     async save(word: string, note: string) {
       const id = key(word);

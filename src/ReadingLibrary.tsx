@@ -232,7 +232,7 @@ export function BookImporter({ api, language, books, targetId, notify, onClose, 
 }
 
 /** One registered word in the order furigana, meaning, personal note, decomposition. The note is shared by every material. */
-export function WordLookup({ api, word, language, onClose }: { api: LibraryApi; word: string; language: Language; onClose: () => void }) {
+export function WordLookup({ api, word, language, onClose, onNoteSaved }: { api: LibraryApi; word: string; language: Language; onClose: () => void; onNoteSaved?: (word: string, note: string) => void }) {
   const [detail, setDetail] = useState<WordDetail | null | undefined>(undefined);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
@@ -250,7 +250,7 @@ export function WordLookup({ api, word, language, onClose }: { api: LibraryApi; 
   const save = async () => {
     if (!detail || busy) return;
     setBusy(true); setError(""); setSaved(false);
-    try { await api("word-note", { word: detail.word, note }); if (mounted.current) setSaved(true); }
+    try { await api("word-note", { word: detail.word, note }); onNoteSaved?.(detail.word, note); if (mounted.current) setSaved(true); }
     catch (cause) { if (mounted.current) setError(errorText(cause, "메모를 저장하지 못했습니다.")); }
     finally { if (mounted.current) setBusy(false); }
   };
