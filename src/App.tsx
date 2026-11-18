@@ -21,6 +21,7 @@ import { Chrome, type HeaderSection, type Tab } from "./Chrome";
 import { isDesktopLayout } from "./responsive";
 import { BrowserTheme } from "./BrowserTheme";
 import { useMainReturn } from "./useMainReturn";
+import { CompletionHud, type Completion } from "./CompletionHud";
 
 import { ResultQueue } from "./domain/resultQueue";
 import { resultStorage } from "./resultStorage";
@@ -83,6 +84,8 @@ export default function App() {
   }, [signedInId, library.loaded, library.reading.section]);
   const changeSection = (next: HeaderSection) => { setSection(next); library.setSection(next); };
   const goHome = () => { changeSection("vocabulary"); setTab("today"); };
+  // The last saved quiz; the home screen shows it once and clears it.
+  const [completion, setCompletion] = useState<Completion | null>(null);
   const c = palettes[display.theme];
 
   useEffect(() => { readDisplay().then(setDisplay, () => undefined); }, []);
@@ -125,7 +128,12 @@ export default function App() {
   const save = (results: Record<string, StudyResult>) => {
     if (gate.kind !== "ready" || !resultQueue) return false;
     resultQueue.enqueue(Object.entries(results).map(([id, result]) => ({ id, result })), today);
-    setGate(previous => previous.kind === "ready" ? { ...previous, progress: resultQueue.getSnapshot().progress } : previous);
+    const progress = resultQueue.getSnapshot().progress;
+    setGate(previous => previous.kind === "ready" ? { ...previous, progress } : previous);
+    const ids = Object.keys(results);
+    const passCount = ids.filter(id => results[id] === "PASS").length;
+    const nextReviewDate = ids.map(id => progress[id]?.due).filter((due): due is string => typeof due === "string" && /^\d{4}-\d{2}-\d{2}$/.test(due)).sort()[0] ?? null;
+    if (ids.length) setCompletion({ id: Date.now(), passCount, total: ids.length, allPass: passCount === ids.length, nextReviewDate });
     return true;
   };
 
@@ -190,6 +198,7 @@ export default function App() {
         {delivery.items.filter(job => job.status === "failed").map(job => <View key={job.id}><T size={12} tone="error">전송 거절: {job.error}</T><Btn title="재전송" onPress={() => resultQueue?.retry(job.id)} /></View>)}
       </View>}
       {body}
+      <CompletionHud completion={gate.kind === "ready" && !session ? completion : null} today={today} onDone={() => setCompletion(null)} />
       {toast && <Toast text={toast.text} tone={toast.tone} phone={!desktop && !session && !library.openId} />}
     </SafeAreaView>
   </Device.Provider></Theme.Provider></SafeAreaProvider>;
