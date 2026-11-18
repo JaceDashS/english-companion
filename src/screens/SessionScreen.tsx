@@ -117,9 +117,9 @@ export function SessionScreen({ libraryApi, vocabularyWords = [], start, progres
 
   const roots = word?.roots ?? [];
   const sameRoot = (root: string) => uniqueWords(vocabularyWords.filter(entry => entry.word.toLowerCase() !== word?.word.toLowerCase() && (entry.roots ?? []).some(value => value.toLowerCase() === root.toLowerCase())));
+  // One button per root that shows only the root itself; it opens the words sharing it.
   const rootRow = roots.length > 0 ? <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center", alignItems: "center" }}>
-    <T size={12.5} tone="dim">어근</T>
-    {roots.map(root => <Btn key={root} variant="ghost" title={`${root} · 같은 어근 ${sameRoot(root).length}`} label={`${root} 어근이 같은 단어`} onPress={() => setRootSheet(root)} />)}
+    {roots.map(root => <Btn key={root} variant="ghost" title={root} label={`${root} 어근이 같은 단어`} onPress={() => setRootSheet(root)} testID={`root-${root}`} />)}
   </View> : null;
   const studyNotes = word ? <>
     <NoteEditor key={word.id} label="내 메모" value={notes.get(word.word)} onSave={value => notes.save(word.word, value)} />
@@ -206,8 +206,8 @@ export function SessionScreen({ libraryApi, vocabularyWords = [], start, progres
       <NavButton label="다음" title="→" phone={isPhone} primary disabled={!canNext} onPress={next} testID={phase === "quiz" ? "quiz-next" : "study-next"} />
     </View>}
     {sheet && <Sheet title={`${start.title} 목록`} onClose={() => setSheet(false)}>{tiles}</Sheet>}
-  {wordNote && <WordLookup key={wordNote} api={libraryApi} word={wordNote} language="en" onClose={() => setWordNote(null)} onNoteSaved={notes.setLocal} />}
-    {rootSheet && <Sheet title={`어근 ${rootSheet} · 같은 어근 단어`} onClose={() => setRootSheet(null)}>
+  {wordNote && <WordLookup key={wordNote} api={libraryApi} word={wordNote} language="en" onClose={() => setWordNote(null)} onNoteSaved={note => notes.setLocal(wordNote, note)} />}
+    {rootSheet && <Sheet title={`${rootSheet} · 같은 어근 단어`} onClose={() => setRootSheet(null)}>
       {sameRoot(rootSheet).length ? sameRoot(rootSheet).map(entry => <Pressable key={entry.id} accessibilityRole="button" accessibilityLabel={`${entry.word} 단어 노트`} onPress={() => setWordNote(entry.word)} style={{ gap: 3, padding: 12, borderWidth: 1, borderColor: c.border, borderRadius: 10, backgroundColor: c.raised }}><T size={17} serif weight="700">{entry.word}</T><T size={13} tone="muted">{entry.meaning}</T></Pressable>) : <Empty>이 어근을 가진 다른 단어가 아직 없습니다.</Empty>}
     </Sheet>}</View>;
 }
