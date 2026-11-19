@@ -27,7 +27,7 @@ import { useMainReturn } from "./useMainReturn";
 import { CompletionHud, type Completion, type CompletionMessage } from "./CompletionHud";
 
 import { remainingNewWords } from "./domain/study";
-import { splitWordsIntoDays } from "./domain/dashboard";
+import { splitWordsIntoDays, WORDS_PER_DAY } from "./domain/dashboard";
 import { ResultQueue } from "./domain/resultQueue";
 import { resultStorage } from "./resultStorage";
 const EMPTY_DELIVERY = { items: [], persistent: true, progress: {} };
@@ -230,15 +230,16 @@ export default function App() {
       ? <SettingsScreen client={client} phone={!desktop} busy={busy} error={error} display={display} onDisplay={changeDisplay} onLogout={() => void logout()} onExpired={expired}
         vocabularies={personalMaterials.filter(book => book.kind === "vocabulary")}
         onDeleteVocabulary={async (book) => { await libraryApi("library/delete", { id: book.id }); await library.reload(); notify(`${book.title} 단어장을 삭제했습니다.`); }} />
-      : <HomeScreen libraryApi={libraryApi} library={library} section={section} notify={notify} key={gate.user.id} books={books} bookId={bookId} onBookChange={chooseVocabulary} units={allUnits} progress={gate.progress} today={today} desktop={desktop} tab={tab}
+      : <HomeScreen libraryApi={libraryApi} library={library} section={section} notify={notify} key={gate.user.id} books={books} bookId={bookId} onBookChange={chooseVocabulary} units={allUnits} progress={gate.progress} today={today} desktop={desktop} tab={tab} dailyNewDays={display.dailyNewDays}
         onImportComplete={(title, detail) => setCompletion({ id: Date.now(), allPass: true, title, detail })}
         onStudy={(row, queuedWords) => {
-          const remaining = remainingNewWords(gate.progress, today);
+          const dailyLimit = display.dailyNewDays * WORDS_PER_DAY;
+          const remaining = remainingNewWords(gate.progress, today, dailyLimit);
           const newWords = row.unit.words.filter(word => word.quiz && !gate.progress[word.id]).slice(0, remaining);
           const newIds = new Set(newWords.map(word => word.id));
           const words = queuedWords ?? row.unit.words.filter(word => !word.quiz || gate.progress[word.id] || newIds.has(word.id));
           if (words.length) setSession({ title: row.unit.title, words, review: false });
-          else notify("오늘 신규 단어 5개를 모두 학습했습니다.");
+          else notify(`오늘 신규 학습(${display.dailyNewDays}개 Day · ${dailyLimit}단어)을 모두 완료했습니다.`);
         }}
         onReview={(row) => setSession({ title: row.unit.title + " 복습", words: row.dueWords, review: true })} />}
   </Chrome>;

@@ -5,6 +5,7 @@ import type { EnglishClient } from "../api/client";
 import { ApiError, type Account } from "../api/types";
 import { SITE_ORIGIN } from "../config";
 import type { Display } from "../display";
+import { WORDS_PER_DAY } from "../domain/dashboard";
 import type { LibraryBook } from "../readingWords";
 import { Btn, Card, layout, Segment, T } from "../ui";
 
@@ -75,6 +76,12 @@ export function SettingsScreen({ client, phone, busy, error, display, onDisplay,
         <Row title="테마"><Segment options={[{ key: "dark", label: "다크 모드" }, { key: "light", label: "라이트 모드" }]} value={display.theme} onChange={(theme) => onDisplay({ ...display, theme })} /></Row>
       </View>
       <T size={12.2} tone="dim">화면 설정은 이 기기에만 저장됩니다.</T>
+    </Card>
+    <Card title="학습">
+      <Row title="하루 신규 학습" hint={`하루 최대 ${display.dailyNewDays * WORDS_PER_DAY}단어`}>
+        <Segment options={[1, 2, 3, 4, 5].map((value) => ({ key: value, label: `${value}개` }))} value={display.dailyNewDays} onChange={(dailyNewDays) => onDisplay({ ...display, dailyNewDays })} />
+      </Row>
+      <T size={12.2} tone="dim">학습 설정은 이 기기에만 저장됩니다.</T>
     </Card>
     {vocabularies.length > 0 && <Card title="단어장 관리" hint={`${vocabularies.length}개`}>
       <View style={{ gap: 12 }}>

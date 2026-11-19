@@ -11,16 +11,16 @@ import React, { useState } from "react";
 import { ScrollView, View } from "react-native";
 import type { Progress } from "../api/types";
 import type { EnglishBook, EnglishUnit, EnglishWord } from "../content/content";
-import { buildQueue, buildUnitRows, stageBuckets, type UnitRow } from "../domain/dashboard";
-import { remainingNewWords, DAILY_NEW_WORD_LIMIT } from "../domain/study";
+import { buildQueue, buildUnitRows, stageBuckets, WORDS_PER_DAY, type UnitRow } from "../domain/dashboard";
+import { remainingNewWords } from "../domain/study";
 import { Btn, Card, Empty, layout, T } from "../ui";
 import { ProgressPanel, RecentUnits, StageChart, Stats, UnitCard, UnitGrid } from "./Dashboard";
 
 export type HomeTab = "today" | "days" | "progress";
 
 /** Today, Unit and progress tabs in the Japanese Companion composition, built from bundled units and account progress. */
-export function HomeScreen({ libraryApi, library, section, notify, books, bookId, onBookChange, onImportComplete, units, progress, today, desktop, tab, onStudy, onReview }: {
-  libraryApi: LibraryApi; library: ReadingLibraryModel; section: HeaderSection; notify: (text: string, tone?: string) => void; books: EnglishBook[]; bookId: string; onBookChange: (id: string) => void; units: EnglishUnit[]; progress: Progress; today: string; desktop: boolean; tab: HomeTab;
+export function HomeScreen({ libraryApi, library, section, notify, books, bookId, onBookChange, onImportComplete, units, progress, today, desktop, tab, dailyNewDays = 1, onStudy, onReview }: {
+  libraryApi: LibraryApi; library: ReadingLibraryModel; section: HeaderSection; notify: (text: string, tone?: string) => void; books: EnglishBook[]; bookId: string; onBookChange: (id: string) => void; units: EnglishUnit[]; progress: Progress; today: string; desktop: boolean; tab: HomeTab; dailyNewDays?: number;
   onStudy: (row: UnitRow, words?: EnglishWord[]) => void; onReview: (row: UnitRow) => void;
   onImportComplete: (title: string, detail: string) => void;
 }) {
@@ -31,7 +31,7 @@ export function HomeScreen({ libraryApi, library, section, notify, books, bookId
   const selectedBook = books.find(book => book.id === bookId) ?? books[0];
   const visibleUnits = selectedBook?.units ?? [];
   const rows = buildUnitRows(visibleUnits, progress, today);
-  const remaining = remainingNewWords(progress, today);
+  const remaining = remainingNewWords(progress, today, dailyNewDays * WORDS_PER_DAY);
   const { reviews, learning } = buildQueue(rows, progress, remaining);
   const newCount = learning.reduce((sum, item) => sum + item.words.length, 0);
   const failTotal = rows.reduce((sum, row) => sum + row.failCount, 0);
@@ -42,7 +42,7 @@ export function HomeScreen({ libraryApi, library, section, notify, books, bookId
   </View>;
   const stats = <Stats phone={phone} items={[
     { accent: "info", label: "오늘 복습", value: `${reviews.length}개`, hint: reviews.length ? `단어 ${reviews.reduce((sum, row) => sum + row.dueWords.length, 0)}개` : "예정 없음" },
-    { accent: "good", label: "오늘 신규", value: `${newCount}개`, hint: remaining ? `하루 최대 ${DAILY_NEW_WORD_LIMIT}개` : "오늘 신규 학습 완료" },
+    { accent: "good", label: "오늘 신규", value: `${learning.length}개`, hint: learning.length ? `단어 ${newCount}개` : "오늘 몫 완료" },
     { accent: "accent", label: "시작한 Day", value: `${rows.filter(row => row.started > 0).length}/${rows.length}`, hint: `졸업 ${rows.filter(row => row.graduated).length}개` },
     { accent: "warn", label: "다시 볼 단어", value: `${failTotal}개`, hint: failTotal ? "복습에서 다시 나옵니다" : "오답 없음" },
   ]} />;
@@ -55,12 +55,12 @@ export function HomeScreen({ libraryApi, library, section, notify, books, bookId
   else if (tab === "progress") content = <Card title="전체 진행률">{rows.length ? <ProgressPanel rows={rows} /> : <Empty>단어가 추가되면 진행률이 표시됩니다.</Empty>}</Card>;
   else if (phone) content = <>
     {stats}
-    <Card title="오늘 할 학습" hint={`복습 ${reviews.length} · 신규 ${newCount}`}>{queue}</Card>
+    <Card title="오늘 할 학습" hint={`복습 ${reviews.length} · 신규 ${learning.length}`}>{queue}</Card>
     <Card title="복습 단계 분포" hint={`단어 ${wordCount}개`}>{chart}</Card>
     <Card title="최근 학습">{recent}</Card>
   </>;
   else content = <>
-    <View style={{ minWidth: 0 }}><T size={21.6} serif weight="700" style={{ lineHeight: 30 }}>오늘 할 학습</T><T size={13.1} tone="muted" style={{ marginTop: 5 }}>{today} · 복습 {reviews.length}개 · 신규 {newCount}개</T></View>
+    <View style={{ minWidth: 0 }}><T size={21.6} serif weight="700" style={{ lineHeight: 30 }}>오늘 할 학습</T><T size={13.1} tone="muted" style={{ marginTop: 5 }}>{today} · 복습 {reviews.length}개 · 신규 {learning.length}개</T></View>
     {stats}
     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 16 }}>
       <View style={{ flex: 1.25, minWidth: 0 }}><Card title="학습 대기열" hint={`${reviews.length + learning.length}건`}>{queue}</Card></View>

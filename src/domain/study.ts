@@ -3,9 +3,9 @@ import type { EnglishUnit, EnglishWord } from "../content/content";
 
 export const DAILY_NEW_WORD_LIMIT = 5;
 
-export function remainingNewWords(progress: Progress, today: string): number {
+export function remainingNewWords(progress: Progress, today: string, dailyLimit = DAILY_NEW_WORD_LIMIT): number {
   const started = Object.values(progress).filter(entry => entry.firstStudiedOn === today).length;
-  return Math.max(0, DAILY_NEW_WORD_LIMIT - started);
+  return Math.max(0, dailyLimit - started);
 }
 
 export interface UnitSummary {
