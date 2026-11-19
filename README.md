@@ -1,5 +1,7 @@
 # English Companion
 
+[공개 앱 소개](https://jace-s.com/apps/english-companion)
+
 Product repository for the English vocabulary companion. One Expo React Native codebase builds both the web app served at `https://english.jace-s.com` and the Android app. Login, permissions and progress use the platform API at `https://api.jace-s.com`; word content ships with the app in `src/content/words.json`.
 
 - [Documentation](docs/00-index.md)
