@@ -52,12 +52,16 @@ export function recentUnits(rows: UnitRow[], limit = 5): UnitRow[] {
   return rows.filter((row) => row.lastDate).sort((a, b) => b.lastUpdatedAt.localeCompare(a.lastUpdatedAt)).slice(0, limit);
 }
 
-/** Today's queue: units with due reviews, and the first unit that still has unstarted words. */
-export function buildQueue(rows: UnitRow[]) {
-  return {
-    reviews: rows.filter((row) => row.dueWords.length > 0),
-    learning: rows.filter((row) => row.started < row.total).slice(0, 1),
-  };
+/** Fill the remaining daily allowance in content order, across units as needed. */
+export function buildQueue(rows: UnitRow[], progress: Progress, remaining: number) {
+  const learning: { row: UnitRow; words: EnglishWord[] }[] = [];
+  for (const row of rows) {
+    if (!remaining) break;
+    const words = row.unit.words.filter(word => word.quiz && !progress[word.id]).slice(0, remaining);
+    if (words.length) learning.push({ row, words });
+    remaining -= words.length;
+  }
+  return { reviews: rows.filter(row => row.dueWords.length > 0), learning };
 }
 
 /** Word counts per stage bucket: unstarted or failed-to-zero words first, then stages 1 to MAX_STAGE. */

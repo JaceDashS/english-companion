@@ -28,6 +28,7 @@ export interface WordProgress {
   due: string;
   lastResult: StudyResult;
   updatedAt: string;
+  firstStudiedOn?: string;
 }
 
 export type Progress = Record<string, WordProgress>;
@@ -44,7 +45,7 @@ export class ApiError extends Error {
 /** Platform-specific HTTP layer. Web relies on browser cookies; native keeps the session in encrypted storage. */
 export interface Transport {
   /** Sends a request to an API path such as `/auth/session`. `account` binds a write to the expected user. */
-  send<T>(path: string, body?: unknown, account?: string): Promise<T>;
+  send<T>(path: string, body?: unknown, account?: string, manageSession?: boolean): Promise<T>;
   /** Drops locally held credentials without contacting the server. */
   forget(): Promise<void>;
   /** Native: whether stored credentials exist. Web always returns true so the browser cookie is checked. */

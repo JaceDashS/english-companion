@@ -12,7 +12,8 @@ export function optimisticResults(previous: Progress, results: ResultJob["result
     const stage = result === "FAIL" ? Math.max(0, (previous[id]?.stage ?? 0) - 1) : Math.min(6, (previous[id]?.stage ?? 0) + 1);
     const due = new Date(date + "T00:00:00Z");
     due.setUTCDate(due.getUTCDate() + (result === "FAIL" ? 1 : intervals[stage - 1]));
-    return [id, { stage, due: due.toISOString().slice(0, 10), lastResult: result, updatedAt: `${date}${new Date().toISOString().slice(10)}` }];
+    const firstStudiedOn = previous[id] ? previous[id].firstStudiedOn : date;
+    return [id, { ...(firstStudiedOn ? { firstStudiedOn } : {}), stage, due: due.toISOString().slice(0, 10), lastResult: result, updatedAt: `${date}${new Date().toISOString().slice(10)}` }];
   }));
 }
 
@@ -29,7 +30,7 @@ export class ResultQueue {
   constructor(private storage: ResultStorage, private send: (job: ResultJob) => Promise<Progress>, private delay = 1000) {}
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   getSnapshot = () => this.snapshot;
-  async restore(progress: Progress) {
+  async restore(progress: Progress, enabled = true) {
     this.pause();
     await this.persistence;
     try {
@@ -39,10 +40,11 @@ export class ResultQueue {
       this.jobs = jobs;
     } catch { this.snapshot.persistent = false; }
     this.confirmed = progress;
-    this.enabled = true;
+    this.enabled = enabled;
     this.publish();
     void this.pump();
   }
+  reconcile(progress: Progress) { this.confirmed = progress; this.publish(); }
   enqueue(results: ResultJob["results"], date: string) {
     const job: ResultJob = {
       id: globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36) + "-" + Math.random().toString(36).slice(2),

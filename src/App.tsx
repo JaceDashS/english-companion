@@ -1,6 +1,9 @@
+import { StudySkeleton } from "./StudyLoading";
+import { clearSnapshot, readSnapshot, saveSnapshot } from "./studySnapshot";
+import { useCompanionReady } from "./useCompanionReady";
 import type { LibraryApi, LibraryBook } from "./readingWords";
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Linking, useWindowDimensions, View } from "react-native";
+import { Linking, Platform, useWindowDimensions, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { accountDate, EnglishClient } from "./api/client";
@@ -16,13 +19,14 @@ import { LoginScreen } from "./screens/LoginScreen";
 import { SessionScreen, type SessionStart } from "./screens/SessionScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { Btn, Card, Device, gradient, layout, palettes, T, Theme, Toast } from "./ui";
-import { Loading, ReaderScreen, useReadingLibrary } from "./ReadingLibrary";
+import { ReaderScreen, useReadingLibrary } from "./ReadingLibrary";
 import { Chrome, type HeaderSection, type Tab } from "./Chrome";
 import { isDesktopLayout } from "./responsive";
 import { BrowserTheme } from "./BrowserTheme";
 import { useMainReturn } from "./useMainReturn";
-import { CompletionHud, type Completion } from "./CompletionHud";
+import { CompletionHud, type Completion, type CompletionMessage } from "./CompletionHud";
 
+import { remainingNewWords } from "./domain/study";
 import { ResultQueue } from "./domain/resultQueue";
 import { resultStorage } from "./resultStorage";
 const EMPTY_DELIVERY = { items: [], persistent: true, progress: {} };
@@ -30,11 +34,13 @@ const subscribeNone = () => () => {};
 
 const BOOKS = parseBooks(rawContent);
 
+type CachedStudy = { user: User; clock: Clock; progress: Progress };
+
 type Gate =
   | { kind: "checking" }
   | { kind: "login"; notice?: string }
   | { kind: "blocked"; message: string }
-  | { kind: "ready"; user: User; clock: Clock; clockAt: number; progress: Progress };
+  | { kind: "ready"; user: User; clock: Clock; clockAt: number; progress: Progress; verified: boolean };
 
 const BLOCKED: Record<string, string> = {
   APP_ACCESS_DENIED: "이 앱을 사용할 권한이 없습니다.",
@@ -47,6 +53,7 @@ export default function App() {
   const [gate, setGate] = useState<Gate>({ kind: "checking" });
   const [tab, setTab] = useState<Tab>("today");
   const [bookId, setBookId] = useState(BOOKS[0]?.id ?? "");
+  useCompanionReady(gate.kind === "ready");
   const [session, setSession] = useState<SessionStart | null>(null);
   const [display, setDisplay] = useState<Display>(DEFAULT_DISPLAY);
   const [busy, setBusy] = useState(false);
@@ -66,7 +73,7 @@ export default function App() {
   const notify = useCallback((text: string, tone?: string) => setToast({ text, tone }), []);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(null), 5000); return () => clearTimeout(timer); }, [toast]);
   const libraryApi: LibraryApi = useCallback((endpoint, body, query) => client.libraryRequest(endpoint, body, query), [client]);
-  const library = useReadingLibrary(libraryApi, notify, gate.kind === "ready");
+  const library = useReadingLibrary(libraryApi, notify, gate.kind === "ready" && gate.verified);
   const personalMaterials: LibraryBook[] = useMemo(() => library.books ?? [], [library.books]);
   const books = useMemo(() => [...BOOKS.filter(book => book.units.some(unit => unit.words.length)), ...personalMaterials.filter(book => book.kind === "vocabulary").map(book => ({ id: book.id, title: book.title, units: [{ id: book.id, title: book.title, words: book.words }] }))], [personalMaterials]);
   const allUnits = useMemo(() => books.flatMap(book => book.units), [books]);
@@ -85,48 +92,84 @@ export default function App() {
   const changeSection = (next: HeaderSection) => { setSection(next); library.setSection(next); };
   const goHome = () => { changeSection("vocabulary"); setTab("today"); };
   // The last saved quiz; the home screen shows it once and clears it.
-  const [completion, setCompletion] = useState<Completion | null>(null);
+  const [completion, setCompletion] = useState<Completion | CompletionMessage | null>(null);
   const c = palettes[display.theme];
 
   useEffect(() => { readDisplay().then(setDisplay, () => undefined); }, []);
   const changeDisplay = (next: Display) => { setDisplay(next); void writeDisplay(next).catch(() => undefined); };
 
-  /** Loads permission, account clock and progress for a signed-in user. Another account resets every screen. */
-  const enter = useCallback(async (user: User | null, notice?: string) => {
-    if (!user) return setGate({ kind: "login", notice });
-    try {
-      const clock = await client.bootstrap();
-      const progress = await client.progress();
-      if (userId.current && userId.current !== user.id) { setSession(null); setTab("today"); setBookId(BOOKS[0]?.id ?? ""); }
-      for (const queue of queues.current.values()) queue.pause();
-      let queue = queues.current.get(user.id);
-      if (!queue) {
-        queue = new ResultQueue(resultStorage(user.id), job => {
-          if (client.currentUser?.id !== user.id) return Promise.reject(new ApiError(401, "ACCOUNT_CHANGED"));
-          return client.saveResults(job.results, job.id, job.date);
-        });
-        queues.current.set(user.id, queue);
-      }
-      await queue.restore(progress);
-      setResultQueue(queue);
-      userId.current = user.id;
-      setGate({ kind: "ready", user, clock, clockAt: Date.now(), progress: queue.getSnapshot().progress });
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) return setGate({ kind: "login", notice: "로그인이 끝났습니다. 다시 로그인해 주세요." });
-      const code = cause instanceof ApiError ? cause.code : "";
-      setGate({ kind: "blocked", message: BLOCKED[code] ?? "로그인 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요." });
+  const getQueue = useCallback((owner: string) => {
+    let queue = queues.current.get(owner);
+    if (!queue) {
+      queue = new ResultQueue(resultStorage(owner), job => {
+        if (client.currentUser?.id !== owner) return Promise.reject(new ApiError(401, "ACCOUNT_CHANGED"));
+        return client.saveResults(job.results, job.id, job.date);
+      });
+      queues.current.set(owner, queue);
     }
+    return queue;
   }, [client]);
 
-  useEffect(() => {
-    client.restore().then((user) => enter(user), () => setGate({ kind: "blocked", message: "서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요." }));
-  }, [client, enter]);
+  const checking = useRef(false);
+  const enter = useCallback(async (knownUser?: User) => {
+    if (checking.current) return;
+    checking.current = true;
+    let finished = false;
+    let previewQueue: ResultQueue | undefined;
+    const cached = knownUser ? Promise.resolve(null) : readSnapshot<CachedStudy>().then(async snapshot => {
+      if (!snapshot || snapshot.owner !== snapshot.payload.user.id) return null;
+      if (!finished) {
+        const { user, clock, progress } = snapshot.payload;
+        const queue = getQueue(user.id);
+        await queue.restore(progress, false);
+        previewQueue = queue;
+        if (!finished) {
+          setResultQueue(queue);
+          setGate({ kind: "ready", verified: false, user, clock, clockAt: snapshot.savedAt, progress: queue.getSnapshot().progress });
+        }
+      }
+      return snapshot;
+    }).catch(() => null);
+    try {
+      const result = await client.startStudy(knownUser);
+      finished = true;
+      const snapshot = await cached;
+      if (!result || (snapshot && snapshot.owner !== result.user.id)) {
+        await clearSnapshot(snapshot?.owner);
+        setResultQueue(null);
+        return setGate({ kind: "login" });
+      }
+      const { user, progress, clock } = result;
+      if (userId.current && userId.current !== user.id) { setSession(null); setTab("today"); setBookId(BOOKS[0]?.id ?? ""); }
+      for (const queue of queues.current.values()) queue.pause();
+      const queue = getQueue(user.id);
+      if (queue === previewQueue) { queue.reconcile(progress); queue.resume(); }
+      else await queue.restore(progress);
+      setResultQueue(queue);
+      userId.current = user.id;
+      setGate({ kind: "ready", verified: true, user, clock, clockAt: Date.now(), progress: queue.getSnapshot().progress });
+      void saveSnapshot(user.id, "progress", result);
+    } catch (cause) {
+      const snapshot = await cached;
+      if (cause instanceof ApiError && (cause.status === 401 || cause.code === "ACCOUNT_CHANGED")) {
+        await clearSnapshot(snapshot?.owner);
+        setResultQueue(null);
+        return setGate({ kind: "login", notice: "로그인이 끝났습니다. 다시 로그인해 주세요." });
+      }
+      const code = cause instanceof ApiError ? cause.code : "";
+      if (!snapshot || BLOCKED[code]) {
+        setGate({ kind: "blocked", message: BLOCKED[code] ?? "로그인 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요." });
+      }
+    } finally { checking.current = false; }
+  }, [client, getQueue]);
+
+  useEffect(() => { void enter(); }, [enter]);
 
   const today = gate.kind === "ready" ? accountDate(gate.clock, Date.now() - gate.clockAt) : "";
 
   /** Local progress and navigation update immediately; durable delivery runs independently. */
   const save = (results: Record<string, StudyResult>) => {
-    if (gate.kind !== "ready" || !resultQueue) return false;
+    if (gate.kind !== "ready" || !gate.verified || !resultQueue) return false;
     resultQueue.enqueue(Object.entries(results).map(([id, result]) => ({ id, result })), today);
     const progress = resultQueue.getSnapshot().progress;
     setGate(previous => previous.kind === "ready" ? { ...previous, progress } : previous);
@@ -142,6 +185,7 @@ export default function App() {
     setBusy(true);
     try {
       await client.logout();
+      await clearSnapshot(userId.current || undefined);
       userId.current = "";
       setSession(null);
       setTab("today");
@@ -155,7 +199,7 @@ export default function App() {
     }
   };
 
-  const expired = useCallback(() => { for (const queue of queues.current.values()) queue.pause(); setSession(null); setGate({ kind: "login", notice: "로그인이 끝났습니다. 다시 로그인해 주세요." }); }, []);
+  const expired = useCallback(() => { void clearSnapshot(userId.current || undefined); for (const queue of queues.current.values()) queue.pause(); setSession(null); setGate({ kind: "login", notice: "로그인이 끝났습니다. 다시 로그인해 주세요." }); }, []);
 
   useMainReturn({
     active: gate.kind === "ready" && Boolean(session),
@@ -175,16 +219,26 @@ export default function App() {
   });
 
   let body: React.ReactNode;
-  if (gate.kind === "checking") body = <Loading text="로그인 확인 중…" />;
+  if (gate.kind === "checking") body = <StudySkeleton />;
   else if (gate.kind === "login") body = <LoginScreen client={client} notice={gate.notice} onLoggedIn={(user) => enter(user)} />;
   else if (gate.kind === "blocked") body = <View style={[layout.body, { maxWidth: 520 }]}><Card title="English Companion"><T>{gate.message}</T><Btn variant="primary" title="메인 페이지로" onPress={() => void Linking.openURL(SITE_ORIGIN + "/")} /></Card></View>;
   else if (library.openId) body = <ReaderScreen library={library} api={libraryApi} language="en" notify={notify} />;
   else if (session) body = <SessionScreen libraryApi={libraryApi} vocabularyWords={allUnits.flatMap(unit => unit.words)} key={session.title + session.words.map((word) => word.id).join()} start={session} progress={gate.progress} isPhone={!desktop} busy={busy} error={error} onSave={save} onClose={() => { setError(""); setSession(null); }} />;
   else body = <Chrome desktop={desktop} section={section} onSectionChange={(next) => { changeSection(next); if (tab === "settings") setTab("today"); }} onHome={goHome} tab={tab} today={today} dueCount={visibleUnits.filter((unit) => unit.words.some((word) => word.quiz && gate.progress[word.id] && gate.progress[word.id].due <= today)).length} onNavigate={setTab}>
     {tab === "settings"
-      ? <SettingsScreen client={client} phone={!desktop} busy={busy} error={error} display={display} onDisplay={changeDisplay} onLogout={() => void logout()} onExpired={expired} />
+      ? <SettingsScreen client={client} phone={!desktop} busy={busy} error={error} display={display} onDisplay={changeDisplay} onLogout={() => void logout()} onExpired={expired}
+        vocabularies={personalMaterials.filter(book => book.kind === "vocabulary")}
+        onDeleteVocabulary={async (book) => { await libraryApi("library/delete", { id: book.id }); await library.reload(); notify(`${book.title} 단어장을 삭제했습니다.`); }} />
       : <HomeScreen libraryApi={libraryApi} library={library} section={section} notify={notify} key={gate.user.id} books={books} bookId={bookId} onBookChange={chooseVocabulary} units={allUnits} progress={gate.progress} today={today} desktop={desktop} tab={tab}
-        onStudy={(row) => setSession({ title: row.unit.title, words: row.unit.words, review: false })}
+        onImportComplete={(title, detail) => setCompletion({ id: Date.now(), allPass: true, title, detail })}
+        onStudy={(row, queuedWords) => {
+          const remaining = remainingNewWords(gate.progress, today);
+          const newWords = row.unit.words.filter(word => word.quiz && !gate.progress[word.id]).slice(0, remaining);
+          const newIds = new Set(newWords.map(word => word.id));
+          const words = queuedWords ?? row.unit.words.filter(word => !word.quiz || gate.progress[word.id] || newIds.has(word.id));
+          if (words.length) setSession({ title: row.unit.title, words, review: false });
+          else notify("오늘 신규 단어 5개를 모두 학습했습니다.");
+        }}
         onReview={(row) => setSession({ title: row.unit.title + " 복습", words: row.dueWords, review: true })} />}
   </Chrome>;
 
@@ -192,12 +246,13 @@ export default function App() {
     <StatusBar style={display.theme === "light" ? "dark" : "light"} />
     <SafeAreaView style={[{ flex: 1, backgroundColor: c.bg }, gradient(`radial-gradient(900px 480px at 85% -10%, ${c.glow}, transparent 70%)`)]}>
       <Notices />
-      {gate.kind === "ready" && delivery.items.length > 0 && <View style={{ padding: 10, gap: 6 }}>
+      {gate.kind === "ready" && gate.verified && delivery.items.length > 0 && <View style={{ padding: 10, gap: 6 }}>
         <T size={12} tone="muted">전송 대기 {delivery.items.length}건 · 연결되면 자동으로 재시도합니다.</T>
         {!delivery.persistent && <T size={12} tone="error">이 기기에서는 큐를 저장할 수 없어 앱을 닫으면 대기 기록이 사라질 수 있습니다.</T>}
         {delivery.items.filter(job => job.status === "failed").map(job => <View key={job.id}><T size={12} tone="error">전송 거절: {job.error}</T><Btn title="재전송" onPress={() => resultQueue?.retry(job.id)} /></View>)}
       </View>}
-      {body}
+      {gate.kind === "ready" && !gate.verified && <Btn title="연결 다시 확인" onPress={() => void enter()} />}
+      <View ref={node => { if (Platform.OS === "web" && node instanceof HTMLElement) node.inert = gate.kind === "ready" && !gate.verified; }} accessibilityElementsHidden={gate.kind === "ready" && !gate.verified} importantForAccessibility={gate.kind === "ready" && !gate.verified ? "no-hide-descendants" : "auto"} pointerEvents={gate.kind === "ready" && !gate.verified ? "none" : "auto"} style={{ flex: 1 }}>{body}</View>
       <CompletionHud completion={gate.kind === "ready" && !session ? completion : null} today={today} onDone={() => setCompletion(null)} />
       {toast && <Toast text={toast.text} tone={toast.tone} phone={!desktop && !session && !library.openId} />}
     </SafeAreaView>

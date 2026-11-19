@@ -7,12 +7,14 @@ COPY app.config.js index.ts tsconfig.json ./
 COPY plugins plugins
 COPY assets assets
 COPY src src
+COPY scripts/finalize-web.mjs scripts/finalize-web.mjs
 # API origin for login and data, the main site link, and the registered app ID for app-specific notices
 ARG EXPO_PUBLIC_EC_API_ORIGIN=https://api.jace-s.com
 ARG EXPO_PUBLIC_EC_SITE_ORIGIN=https://jace-s.com
 ARG EXPO_PUBLIC_EC_NOTICE_APP_ID=
 ENV EXPO_PUBLIC_EC_API_ORIGIN=${EXPO_PUBLIC_EC_API_ORIGIN} EXPO_PUBLIC_EC_SITE_ORIGIN=${EXPO_PUBLIC_EC_SITE_ORIGIN} EXPO_PUBLIC_EC_NOTICE_APP_ID=${EXPO_PUBLIC_EC_NOTICE_APP_ID}
-RUN npx expo export --platform web --output-dir dist
+ARG COMPANION_SERVICE_WORKER=1
+RUN COMPANION_SERVICE_WORKER=${COMPANION_SERVICE_WORKER} npm run export:web
 
 FROM node:24-alpine AS runner
 WORKDIR /app

@@ -5,6 +5,7 @@ import test from "node:test";
 import { ContentError, parseBooks, parseContent } from "../src/content/content.ts";
 import raw from "../src/content/words.json" with { type: "json" };
 import { dueWords, grade, quizWords, sentenceOrder, summarizeUnit } from "../src/domain/study.ts";
+import { remainingNewWords } from "../src/domain/study.ts";
 import { buildQueue, buildUnitRows, recentUnits, relativeDay, stageBuckets } from "../src/domain/dashboard.ts";
 
 const word = (id: string, quiz = true) => ({
@@ -114,9 +115,18 @@ test("dashboard rows map units with due reviews, the next new unit, stage bucket
     [2, ["b"], 1, "2026-11-08"], [1, [], 0, "2026-11-05"], [0, [], 0, ""],
   ]);
   assert.equal(rows[0].passRatio, 0.5);
-  const queue = buildQueue(rows);
+  const queue = buildQueue(rows, progress, remainingNewWords(progress, "2026-11-09"));
   assert.deepEqual(queue.reviews.map((row) => row.unit.id), ["u1"]);
-  assert.deepEqual(queue.learning.map((row) => row.unit.id), ["u2"]);
+  assert.deepEqual(queue.learning.map(({ row, words }) => [row.unit.id, words.map(word => word.id)]), [["u2", ["d"]], ["u3", ["e"]]]);
+  const startedToday = Object.fromEntries(Array.from({ length: 4 }, (_, index) =>
+    [`other-book-${index}`, { ...progress.a, firstStudiedOn: "2026-11-09" }]));
+  const remaining = remainingNewWords({ ...progress, ...startedToday }, "2026-11-09");
+  assert.equal(remaining, 1);
+  assert.deepEqual(buildQueue(rows, progress, remaining).learning.flatMap(item => item.words.map(word => word.id)), ["d"]);
+  const finished = buildQueue(rows, progress, 0);
+  assert.deepEqual(finished.learning, []);
+  assert.deepEqual(finished.reviews.map(row => row.unit.id), ["u1"]);
+  assert.equal(remainingNewWords(startedToday, "2026-11-10"), 5);
   assert.deepEqual(stageBuckets(units, progress).map((bucket) => bucket.count), [3, 0, 1, 0, 0, 0, 1]);
   assert.deepEqual(["2026-11-09", "2026-11-08", "2026-11-01"].map((date) => relativeDay(date, "2026-11-09")), ["오늘", "어제", "8일 전"]);
   const sameDayRows = buildUnitRows(units, {
@@ -154,5 +164,5 @@ test("etymological root groups span materials and do not duplicate spellings", (
 
 test("import prompt requests varied unseen pools and includes replenishment history without personal notes", () => {
   const prompt = buildEnglishImportPrompt({ id: "b", title: "Words", kind: "vocabulary", body: "", words: [{ id: "a", word: "inspect", meaning: "inspect meaning", example: "Study sentence.", roots: ["spect"], quiz: null }] }, { inspect: ["Used sentence."] });
-  for (const expected of ["jace-s.english-words", "decomposition", "roots", "quizzes", "8세트", "Study sentence.", "Used sentence.", "절대 생성하지"]) assert.ok(prompt.includes(expected), expected);
+  for (const expected of ["jace-s.english-words", "decomposition", "roots", "quizzes", "8세트", "최대 5단어씩", "```json", "응답 마지막 줄", "‘다음’", '\\"FYI\\"', "\\n", "JSON.parse", "인터넷", "Study sentence.", "Used sentence.", "절대 생성하지"]) assert.ok(prompt.includes(expected), expected);
 });

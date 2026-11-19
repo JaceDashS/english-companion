@@ -43,7 +43,7 @@ export function createNativeTransport(origin: string, store: SessionStore, send:
       credentials = null;
       await store.write(null);
     },
-    async send<T>(path: string, body?: unknown, account?: string): Promise<T> {
+    async send<T>(path: string, body?: unknown, account?: string, manageSession = true): Promise<T> {
       await load();
       const headers: Record<string, string> = { Accept: "application/json" };
       if (credentials) {
@@ -67,7 +67,7 @@ export function createNativeTransport(origin: string, store: SessionStore, send:
         const match = /^\s*(session|csrf)=([^;]*)/.exec(cookie);
         if (match) next[match[1] as keyof Credentials] = decodeURIComponent(match[2]);
       }
-      if (next.session && next.csrf && (next.session !== credentials?.session || next.csrf !== credentials?.csrf)) {
+      if (manageSession && next.session && next.csrf && (next.session !== credentials?.session || next.csrf !== credentials?.csrf)) {
         credentials = { session: next.session, csrf: next.csrf };
         await store.write(JSON.stringify(credentials));
       }

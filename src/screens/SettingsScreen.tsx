@@ -5,7 +5,10 @@ import type { EnglishClient } from "../api/client";
 import { ApiError, type Account } from "../api/types";
 import { SITE_ORIGIN } from "../config";
 import type { Display } from "../display";
+import type { LibraryBook } from "../readingWords";
 import { Btn, Card, layout, Segment, T } from "../ui";
+
+const DEFAULT_VOCABULARY_ID = "example-words";
 
 function formatTime(value: string | null | undefined) {
   if (!value) return "없음";
@@ -22,12 +25,16 @@ function Row({ title, hint, children }: { title: string; hint?: string; children
  * Account card and display settings in the Japanese Companion layout. Profile and password changes stay on the main site.
  * On the web the session cookie is shared, so signing out here also signs out the other jace-s apps in this browser.
  */
-export function SettingsScreen({ client, phone, busy, error, display, onDisplay, onLogout, onExpired }: {
+export function SettingsScreen({ client, phone, busy, error, display, onDisplay, onLogout, onExpired, vocabularies = [], onDeleteVocabulary }: {
   client: EnglishClient; phone: boolean; busy: boolean; error: string; display: Display; onDisplay: (next: Display) => void; onLogout: () => void; onExpired: () => void;
+  vocabularies?: LibraryBook[]; onDeleteVocabulary?: (book: LibraryBook) => Promise<void>;
 }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   useEffect(() => {
     let active = true;
     client.account().then((next) => active && setAccount(next), (cause) => {
@@ -69,5 +76,34 @@ export function SettingsScreen({ client, phone, busy, error, display, onDisplay,
       </View>
       <T size={12.2} tone="dim">화면 설정은 이 기기에만 저장됩니다.</T>
     </Card>
+    {vocabularies.length > 0 && <Card title="단어장 관리" hint={`${vocabularies.length}개`}>
+      <View style={{ gap: 12 }}>
+        {vocabularies.map((book) => {
+          const isDefault = book.id === DEFAULT_VOCABULARY_ID;
+          const confirming = confirmDeleteId === book.id;
+          const deleting = deletingId === book.id;
+          return <Row key={book.id} title={book.title} hint={`${book.words.length}단어${isDefault ? " · 기본 단어장" : ""}`}>
+            {isDefault
+              ? <T size={12.2} tone="dim">삭제 불가</T>
+              : confirming
+                ? <View style={{ flexDirection: "row", gap: 6 }}>
+                    <Btn variant="danger" title={deleting ? "삭제 중…" : "정말 삭제"} disabled={deleting || !onDeleteVocabulary} testID={`confirm-delete-vocab-${book.id}`} onPress={() => {
+                      if (!onDeleteVocabulary) return;
+                      setDeleteError("");
+                      setDeletingId(book.id);
+                      void onDeleteVocabulary(book).then(() => { setConfirmDeleteId(null); }, (cause) => {
+                        setDeleteError(cause instanceof Error ? cause.message : "단어장을 삭제하지 못했습니다.");
+                      }).finally(() => setDeletingId(null));
+                    }} />
+                    <Btn title="취소" disabled={deleting} onPress={() => setConfirmDeleteId(null)} />
+                  </View>
+                : <Btn variant="danger" title="삭제" disabled={!!deletingId || !onDeleteVocabulary} testID={`delete-vocab-${book.id}`} onPress={() => { setDeleteError(""); setConfirmDeleteId(book.id); }} />}
+          </Row>;
+        })}
+      </View>
+      <T size={12.2} tone="dim">기본 단어장은 삭제할 수 없습니다.</T>
+      {confirmDeleteId && <T size={12.2} tone="dim">삭제한 단어장은 복구할 수 없습니다.</T>}
+      {!!deleteError && <T size={13.1} tone="error">{deleteError}</T>}
+    </Card>}
   </ScrollView></>;
 }

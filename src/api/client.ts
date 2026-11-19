@@ -53,6 +53,42 @@ export class EnglishClient {
     });
   }
 
+  /** Parallel, account-checked startup reads. Session renewal remains serialized. */
+  startStudy(knownUser?: User) {
+    return this.serialize(async () => {
+      if (!knownUser && !await this.transport.hasCredentials()) return null;
+      const session = knownUser ? Promise.resolve(knownUser) : this.call<{ user: User }>("/auth/session").then(
+        result => (this.user = result.user),
+        error => { if (error instanceof ApiError && error.status === 401) return null; throw error; },
+      );
+      type Owner = { userId: string };
+      const paths = ["/app-access/" + APP_KEY, "/auth/clock", "/companions/english/progress"];
+      const read = (path: string, account?: string) => this.transport.send<Owner>(path, undefined, account, false);
+      const first = Promise.allSettled(paths.map(path => read(path)));
+      const user = await session;
+      if (!user) return null;
+      if (user.mustChangePassword) throw new ApiError(403, "PASSWORD_CHANGE_REQUIRED");
+      if (this.user?.id !== user.id) throw new ApiError(401, "ACCOUNT_CHANGED");
+      const values = await Promise.all((await first).map(async (entry, index) => {
+        if (entry.status === "fulfilled" && entry.value.userId === user.id) return entry.value;
+        if (entry.status === "rejected" && (!(entry.reason instanceof ApiError) || entry.reason.status !== 401)) throw entry.reason;
+        const value = await read(paths[index], index === 2 ? user.id : undefined);
+        if (value.userId !== user.id) throw new ApiError(401, "ACCOUNT_CHANGED");
+        return value;
+      })).catch(async error => {
+        if (error instanceof ApiError && (error.status === 401 || error.code === "ACCOUNT_CHANGED")) {
+          this.user = null;
+          await this.transport.forget();
+        }
+        throw error;
+      });
+      const access = values[0] as Owner & { canUse: boolean; mustChangePassword: boolean };
+      if (access.mustChangePassword) throw new ApiError(403, "PASSWORD_CHANGE_REQUIRED");
+      if (!access.canUse) throw new ApiError(403, "APP_ACCESS_DENIED");
+      return { user, clock: values[1] as Owner & Clock, progress: (values[2] as Owner & { progress: Progress }).progress };
+    });
+  }
+
   /** Reads the signed-in account for the account screen. A 401 clears the stored session like any other call. */
   account(): Promise<Account> {
     return this.serialize(async () => {
@@ -149,7 +185,7 @@ export class EnglishClient {
   }
   /** Account-scoped books, word lookups and unique notes over the existing serialized transport. */
   libraryRequest<T>(endpoint: string, body?: unknown, query?: Record<string, string>): Promise<T> {
-    if (!["library", "library/save", "library/append", "library/state", "library/import", "quiz/take", "word", "word-note"].includes(endpoint)) return Promise.reject(new Error("Invalid library route"));
+    if (!["library", "library/save", "library/append", "library/delete", "library/state", "library/import", "quiz/take", "word", "word-note"].includes(endpoint)) return Promise.reject(new Error("Invalid library route"));
     const account = this.user?.id;
     return this.serialize(async () => {
       if (!account || account !== this.user?.id) throw new ApiError(401, "SESSION_EXPIRED");

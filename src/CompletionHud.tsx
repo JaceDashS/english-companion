@@ -4,6 +4,7 @@ import { T, Theme } from "./ui";
 import { completionLines, type Completion } from "./completionText";
 
 export type { Completion } from "./completionText";
+export type CompletionMessage = { id: number; allPass: true; title: string; detail: string };
 
 const FADE_IN = 260;
 const HOLD = 1900;
@@ -13,16 +14,16 @@ const FADE_OUT = 480;
  * Heads-up display in the middle of the home screen after a quiz: it fades in, stays briefly and fades out.
  * It never takes touches or clicks, so the screen underneath keeps working the whole time.
  */
-export function CompletionHud({ completion, today, onDone }: { completion: Completion | null; today: string; onDone: () => void }) {
+export function CompletionHud({ completion, today, onDone }: { completion: Completion | CompletionMessage | null; today: string; onDone: () => void }) {
   const c = useContext(Theme);
   const opacity = useRef(new Animated.Value(0)).current;
   const pop = useRef(new Animated.Value(0)).current;
   const done = useRef(onDone);
   done.current = onDone;
+  const lines = completion && ("title" in completion ? { ...completion, next: null } : completionLines(completion, today));
   useEffect(() => {
-    if (!completion) return;
+    if (!lines) return;
     opacity.setValue(0); pop.setValue(0);
-    const lines = completionLines(completion, today);
     AccessibilityInfo.announceForAccessibility?.([lines.title, lines.detail, lines.next].filter(Boolean).join(". "));
     const run = Animated.sequence([
       Animated.parallel([
@@ -35,8 +36,7 @@ export function CompletionHud({ completion, today, onDone }: { completion: Compl
     run.start(({ finished }) => { if (finished) done.current(); });
     return () => run.stop();
   }, [completion?.id]);
-  if (!completion) return null;
-  const lines = completionLines(completion, today);
+  if (!completion || !lines) return null;
   const tone = completion.allPass ? { fg: c.good, soft: c.goodSoft, line: c.goodLine } : { fg: c.warn, soft: c.warnSoft, line: c.warn };
   const scale = pop.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
   return <View pointerEvents="none" style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center", padding: 24, zIndex: 50 }}>

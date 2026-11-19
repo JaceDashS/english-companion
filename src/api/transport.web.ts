@@ -14,7 +14,7 @@ export function createBrowserTransport(origin: string, send: typeof fetch = (inp
     async forget() {
       csrf = "";
     },
-    async send<T>(path: string, body?: unknown, account?: string): Promise<T> {
+    async send<T>(path: string, body?: unknown, account?: string, manageSession = true): Promise<T> {
       const headers: Record<string, string> = { Accept: "application/json" };
       if (body !== undefined) {
         headers["Content-Type"] = "application/json";
@@ -30,7 +30,7 @@ export function createBrowserTransport(origin: string, send: typeof fetch = (inp
       });
       const payload = await readResponse<T>(response);
       const token = (payload as { csrfToken?: unknown } | null)?.csrfToken;
-      if (typeof token === "string" && token) csrf = token;
+      if (manageSession && typeof token === "string" && token) csrf = token;
       return payload;
     },
   };
