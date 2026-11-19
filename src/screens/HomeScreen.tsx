@@ -37,13 +37,13 @@ export function HomeScreen({ libraryApi, library, section, notify, books, bookId
   const failTotal = rows.reduce((sum, row) => sum + row.failCount, 0);
   const queue = <View style={{ gap: 10 }}>
     {reviews.map(row => <UnitCard key={"r:" + row.unit.id} title={row.unit.title} tone="review" chip={row.failCount > 0 ? "복습・실패" : "복습"} chipTone={row.failCount > 0 ? "fail" : "review"} meta={[`대상 ${row.dueWords.length}개`, `학습 ${row.started}/${row.total}`]} onPress={() => onReview(row)} />)}
-    {learning.map(({ row, words }) => <UnitCard key={"l:" + row.unit.id} title={row.unit.title} tone="learning" chip="학습" chipTone="learning" meta={[`Unit ${row.position}`, `전체 ${row.position}/${rows.length}`, `신규 ${words.length}개`]} onPress={() => onStudy(row, words)} />)}
+    {learning.map(({ row, words }) => <UnitCard key={"l:" + row.unit.id} title={row.unit.title} tone="learning" chip="학습" chipTone="learning" meta={[`신규 ${words.length}개`, `전체 ${row.position}/${rows.length}`]} onPress={() => onStudy(row, words)} />)}
     {!reviews.length && !learning.length && <T size={13.1} tone="muted">{rows.length ? "오늘 몫을 모두 끝냈습니다. 내일 다시 만나요." : "단어가 추가되면 이곳에 오늘의 학습이 표시됩니다."}</T>}
   </View>;
   const stats = <Stats phone={phone} items={[
     { accent: "info", label: "오늘 복습", value: `${reviews.length}개`, hint: reviews.length ? `단어 ${reviews.reduce((sum, row) => sum + row.dueWords.length, 0)}개` : "예정 없음" },
     { accent: "good", label: "오늘 신규", value: `${newCount}개`, hint: remaining ? `하루 최대 ${DAILY_NEW_WORD_LIMIT}개` : "오늘 신규 학습 완료" },
-    { accent: "accent", label: "시작한 Unit", value: `${rows.filter(row => row.started > 0).length}/${rows.length}`, hint: `졸업 ${rows.filter(row => row.graduated).length}개` },
+    { accent: "accent", label: "시작한 Day", value: `${rows.filter(row => row.started > 0).length}/${rows.length}`, hint: `졸업 ${rows.filter(row => row.graduated).length}개` },
     { accent: "warn", label: "다시 볼 단어", value: `${failTotal}개`, hint: failTotal ? "복습에서 다시 나옵니다" : "오답 없음" },
   ]} />;
   const chart = <StageChart stages={stageBuckets(visibleUnits, progress)} />;
@@ -51,7 +51,7 @@ export function HomeScreen({ libraryApi, library, section, notify, books, bookId
   const wordCount = rows.reduce((sum, row) => sum + row.total, 0);
 
   let content: React.ReactNode;
-  if (tab === "days") content = <Card title="Unit 선택" hint={`${rows.length}개`}><UnitGrid rows={rows} phone={phone} onOpen={onStudy} /></Card>;
+  if (tab === "days") content = <Card title="Day 선택" hint={`${rows.length}개`}><UnitGrid rows={rows} phone={phone} onOpen={onStudy} /></Card>;
   else if (tab === "progress") content = <Card title="전체 진행률">{rows.length ? <ProgressPanel rows={rows} /> : <Empty>단어가 추가되면 진행률이 표시됩니다.</Empty>}</Card>;
   else if (phone) content = <>
     {stats}

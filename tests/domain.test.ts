@@ -6,7 +6,7 @@ import { ContentError, parseBooks, parseContent } from "../src/content/content.t
 import raw from "../src/content/words.json" with { type: "json" };
 import { dueWords, grade, quizWords, sentenceOrder, summarizeUnit } from "../src/domain/study.ts";
 import { remainingNewWords } from "../src/domain/study.ts";
-import { buildQueue, buildUnitRows, recentUnits, relativeDay, stageBuckets } from "../src/domain/dashboard.ts";
+import { buildQueue, buildUnitRows, recentUnits, relativeDay, splitWordsIntoDays, stageBuckets, WORDS_PER_DAY } from "../src/domain/dashboard.ts";
 
 const word = (id: string, quiz = true) => ({
   id,
@@ -165,4 +165,19 @@ test("etymological root groups span materials and do not duplicate spellings", (
 test("import prompt requests varied unseen pools and includes replenishment history without personal notes", () => {
   const prompt = buildEnglishImportPrompt({ id: "b", title: "Words", kind: "vocabulary", body: "", words: [{ id: "a", word: "inspect", meaning: "inspect meaning", example: "Study sentence.", roots: ["spect"], quiz: null }] }, { inspect: ["Used sentence."] });
   for (const expected of ["jace-s.english-words", "decomposition", "roots", "quizzes", "8세트", "최대 5단어씩", "```json", "응답 마지막 줄", "‘다음’", '\\"FYI\\"', "\\n", "JSON.parse", "인터넷", "Study sentence.", "Used sentence.", "절대 생성하지"]) assert.ok(prompt.includes(expected), expected);
+});
+
+test("splitWordsIntoDays groups vocabulary words into 5-word Day units without changing word IDs", () => {
+  assert.equal(WORDS_PER_DAY, 5);
+  assert.deepEqual(splitWordsIntoDays("vocab-1", []), []);
+  const all = Array.from({ length: 12 }, (_, index) => parseContent({ version: 1, units: [{ id: "u", title: "U", words: [word(`w-${index + 1}`)] }] })[0].words[0]);
+  const days = splitWordsIntoDays("vocab-1", all);
+  assert.deepEqual(days.map(day => [day.id, day.title, day.words.map(entry => entry.id)]), [
+    ["vocab-1-day-1", "Day 1", ["w-1", "w-2", "w-3", "w-4", "w-5"]],
+    ["vocab-1-day-2", "Day 2", ["w-6", "w-7", "w-8", "w-9", "w-10"]],
+    ["vocab-1-day-3", "Day 3", ["w-11", "w-12"]],
+  ]);
+  const rows = buildUnitRows(days, {}, "2026-11-20");
+  const queue = buildQueue(rows, {}, remainingNewWords({}, "2026-11-20"));
+  assert.deepEqual(queue.learning.map(({ row, words }) => [row.unit.title, words.length]), [["Day 1", 5]]);
 });

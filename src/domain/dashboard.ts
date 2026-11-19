@@ -3,8 +3,21 @@ import type { EnglishUnit, EnglishWord } from "../content/content";
 
 /** The last review stage; a word at this stage counts as graduated. */
 export const MAX_STAGE = 6;
+/** Default number of words grouped into each Day for vocabulary books. */
+export const WORDS_PER_DAY = 5;
 /** Labels for the stage distribution: unstarted words first, then the review interval of each stage. */
 export const STAGE_LABELS = ["신규", "1일", "2일", "4일", "7일", "15일", "30일"];
+
+/** Group a vocabulary book's words into sequential Day units (Day 1, Day 2, ...) without changing word IDs. */
+export function splitWordsIntoDays(bookId: string, words: EnglishWord[], perDay = WORDS_PER_DAY): EnglishUnit[] {
+  const size = Math.max(1, Math.floor(perDay));
+  const days: EnglishUnit[] = [];
+  for (let start = 0; start < words.length; start += size) {
+    const number = days.length + 1;
+    days.push({ id: `${bookId}-day-${number}`, title: `Day ${number}`, words: words.slice(start, start + size) });
+  }
+  return days;
+}
 
 export interface UnitRow {
   unit: EnglishUnit;

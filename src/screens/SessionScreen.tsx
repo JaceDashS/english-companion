@@ -179,7 +179,7 @@ export function SessionScreen({ libraryApi, vocabularyWords = [], start, progres
     {phase === "quiz" && quizLoading && <T>새 문제를 불러오는 중…</T>}
     {!!quizError && <><T tone="error">{quizError}</T><Btn title="다시 불러오기" onPress={() => setQuizRetry(value => value + 1)} /></>}
     {phase === "quiz" && reservation && reservation.exhausted.length > 0 && <Card title="새 문제 보충이 필요합니다"><T>아직 사용하지 않은 예문이 없는 단어가 {reservation.exhausted.length}개 있습니다. 목록의 가져오기·보충에서 프롬프트를 복사해 새 문제를 추가하세요. 이미 본 예문은 다시 출제하지 않습니다.</T><Btn title="목록으로" onPress={onClose} /></Card>}
-    {!list.length && phase === "study" && <Empty>이 Unit에는 아직 단어가 없습니다.</Empty>}
+    {!list.length && phase === "study" && <Empty>이 Day에는 아직 단어가 없습니다.</Empty>}
   </>;
   const split = !isPhone && panel === "items" && phase !== "done";
   return <View style={{ flex: 1, backgroundColor: c.bg }}>

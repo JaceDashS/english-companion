@@ -6,7 +6,7 @@ export type Tab = "today" | "days" | "progress" | "settings";
 export type HeaderSection = "vocabulary" | "bookshelf";
 const tabs = [
   { key: "today", title: "오늘", heading: "오늘 할 학습", icon: "◐" },
-  { key: "days", title: "Unit", heading: "Unit 선택", icon: "▤" },
+  { key: "days", title: "Day", heading: "Day 선택", icon: "▤" },
   { key: "progress", title: "진행", heading: "전체 진행률", icon: "◫" },
   { key: "settings", title: "설정", heading: "설정", icon: "⚙" },
 ] as const;

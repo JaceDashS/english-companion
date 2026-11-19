@@ -63,10 +63,10 @@ export function UnitGrid({ rows, phone, onOpen }: { rows: UnitRow[]; phone: bool
   const tileWidth = width ? (width - (columns - 1) * 8) / columns : minimum;
   return <View style={{ gap: 10 }}>
     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-      <View style={{ flex: 1, minWidth: 140 }}><Input label="Unit 검색" placeholder="Unit 검색" value={query} onChangeText={setQuery} /></View>
+      <View style={{ flex: 1, minWidth: 140 }}><Input label="Day 검색" placeholder="Day 검색" value={query} onChangeText={setQuery} /></View>
       <Btn title="오답만" variant={onlyFail ? "danger" : "default"} onPress={() => setOnlyFail(!onlyFail)} />
     </View>
-    {!rows.length ? <Empty>단어가 추가되면 이곳에 Unit이 표시됩니다.</Empty> : !shown.length ? <Empty>조건에 맞는 Unit이 없습니다.</Empty> : <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+    {!rows.length ? <Empty>단어가 추가되면 이곳에 Day가 표시됩니다.</Empty> : !shown.length ? <Empty>조건에 맞는 Day가 없습니다.</Empty> : <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
       {shown.map(row => <UnitTile key={row.unit.id} row={row} width={tileWidth} onOpen={onOpen} />)}
     </View>}
   </View>;
@@ -89,10 +89,10 @@ export function ProgressPanel({ rows }: { rows: UnitRow[] }) {
   const graduated = rows.filter(row => row.graduated).length;
   const done = rows.filter(row => row.total > 0 && row.started === row.total).length;
   return <View style={{ gap: 16 }}>
-    <Meter label="Unit 완료" value={`${done}/${rows.length}`} ratio={rows.length ? done / rows.length : 0} />
+    <Meter label="Day 완료" value={`${done}/${rows.length}`} ratio={rows.length ? done / rows.length : 0} />
     <Meter label="학습한 단어" value={`${started}/${total}`} ratio={total ? started / total : 0} />
     <Meter label="평균 복습 단계" value={`${average.toFixed(2)} / ${MAX_STAGE}`} ratio={average / MAX_STAGE} tone="info" />
-    <T size={12.2} tone="dim">졸업한 Unit {graduated}개 · 모든 단어가 30일 간격에 도달하면 졸업합니다.</T>
+    <T size={12.2} tone="dim">졸업한 Day {graduated}개 · 모든 단어가 30일 간격에 도달하면 졸업합니다.</T>
   </View>;
 }
 

@@ -27,6 +27,7 @@ import { useMainReturn } from "./useMainReturn";
 import { CompletionHud, type Completion, type CompletionMessage } from "./CompletionHud";
 
 import { remainingNewWords } from "./domain/study";
+import { splitWordsIntoDays } from "./domain/dashboard";
 import { ResultQueue } from "./domain/resultQueue";
 import { resultStorage } from "./resultStorage";
 const EMPTY_DELIVERY = { items: [], persistent: true, progress: {} };
@@ -75,7 +76,7 @@ export default function App() {
   const libraryApi: LibraryApi = useCallback((endpoint, body, query) => client.libraryRequest(endpoint, body, query), [client]);
   const library = useReadingLibrary(libraryApi, notify, gate.kind === "ready" && gate.verified);
   const personalMaterials: LibraryBook[] = useMemo(() => library.books ?? [], [library.books]);
-  const books = useMemo(() => [...BOOKS.filter(book => book.units.some(unit => unit.words.length)), ...personalMaterials.filter(book => book.kind === "vocabulary").map(book => ({ id: book.id, title: book.title, units: [{ id: book.id, title: book.title, words: book.words }] }))], [personalMaterials]);
+  const books = useMemo(() => [...BOOKS.filter(book => book.units.some(unit => unit.words.length)), ...personalMaterials.filter(book => book.kind === "vocabulary").map(book => ({ id: book.id, title: book.title, units: splitWordsIntoDays(book.id, book.words) }))], [personalMaterials]);
   const allUnits = useMemo(() => books.flatMap(book => book.units), [books]);
   const visibleUnits = (books.find(book => book.id === bookId) ?? books[0])?.units ?? [];
   // The last selected vocabulary is part of the account reader state, so every device opens the same one.
