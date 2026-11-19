@@ -35,3 +35,22 @@ export function groupWordsByRoot(words: LibraryWord[]): Map<string, LibraryWord[
   }
   return new Map([...groups].sort(([a], [b]) => a.localeCompare(b)));
 }
+
+/** True when `raw` parses as a complete `jace-s.english-words` v1 payload (optional markdown code fence). */
+export function isCompleteEnglishImportJson(raw: string): boolean {
+  const trimmed = raw.trim();
+  if (!trimmed) return false;
+  try {
+    const parsed = JSON.parse(trimmed.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')) as Record<string, unknown> | null;
+    return Boolean(
+      parsed && typeof parsed === 'object'
+      && parsed.format === 'jace-s.english-words'
+      && parsed.version === 1
+      && Array.isArray(parsed.words)
+      && parsed.words.length > 0
+      && parsed.words.length <= 50,
+    );
+  } catch {
+    return false;
+  }
+}

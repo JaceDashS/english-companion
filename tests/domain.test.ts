@@ -1,4 +1,4 @@
-import { buildEnglishImportPrompt, groupWordsByRoot } from "../src/englishImport";
+import { buildEnglishImportPrompt, groupWordsByRoot, isCompleteEnglishImportJson } from "../src/englishImport";
 import { proseTokens } from "../src/readingWords";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -180,4 +180,16 @@ test("splitWordsIntoDays groups vocabulary words into 5-word Day units without c
   const rows = buildUnitRows(days, {}, "2026-11-20");
   const queue = buildQueue(rows, {}, remainingNewWords({}, "2026-11-20"));
   assert.deepEqual(queue.learning.map(({ row, words }) => [row.unit.title, words.length]), [["Day 1", 5]]);
+  const twoDayQueue = buildQueue(rows, {}, remainingNewWords({}, "2026-11-20", 2 * WORDS_PER_DAY));
+  assert.deepEqual(twoDayQueue.learning.map(({ row, words }) => [row.unit.title, words.length]), [["Day 1", 5], ["Day 2", 5]]);
+});
+
+test("isCompleteEnglishImportJson detects complete raw or fenced payloads and rejects partial input", () => {
+  const valid = JSON.stringify({ format: "jace-s.english-words", version: 1, words: [{ word: "inspect" }] });
+  assert.equal(isCompleteEnglishImportJson(valid), true);
+  assert.equal(isCompleteEnglishImportJson("```json\n" + valid + "\n```"), true);
+  assert.equal(isCompleteEnglishImportJson(valid.slice(0, -2)), false);
+  assert.equal(isCompleteEnglishImportJson(JSON.stringify({ format: "jace-s.english-words", version: 1, words: [] })), false);
+  assert.equal(isCompleteEnglishImportJson(JSON.stringify({ format: "other", version: 1, words: [{ word: "inspect" }] })), false);
+  assert.equal(isCompleteEnglishImportJson(""), false);
 });
