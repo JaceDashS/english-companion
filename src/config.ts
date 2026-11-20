@@ -6,5 +6,7 @@ export const APP_KEY = "english";
 export const API_ORIGIN = trim(process.env.EXPO_PUBLIC_EC_API_ORIGIN, "https://api.jace-s.com");
 /** Main site used for the "main page" link. */
 export const SITE_ORIGIN = trim(process.env.EXPO_PUBLIC_EC_SITE_ORIGIN, "https://jace-s.com");
+/** Unified Education Companion app link shown in standalone mode. */
+export const UNIFIED_APP_URL = trim(process.env.EXPO_PUBLIC_UNIFIED_APP_URL, SITE_ORIGIN + "/education");
 /** Registered platform app ID for app-specific notices; empty means shared notices only. */
 export const NOTICE_APP_ID = Number(process.env.EXPO_PUBLIC_EC_NOTICE_APP_ID) || null;

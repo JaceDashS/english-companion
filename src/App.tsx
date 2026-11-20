@@ -48,7 +48,22 @@ const BLOCKED: Record<string, string> = {
   PASSWORD_CHANGE_REQUIRED: "임시 비밀번호를 메인 사이트에서 바꾼 뒤 사용할 수 있습니다.",
 };
 
-export default function App() {
+export interface CompanionHost {
+  embedded?: boolean;
+  active?: boolean;
+  initialUser?: User;
+  onOpenHub?: () => void;
+  onLogout?: () => Promise<void>;
+  onExpired?: () => void;
+  onStatusChange?: (status: { state: "loading" | "ready" | "error"; dueCount?: number; summary?: string }) => void;
+  renderAdSlot?: (placement: string) => React.ReactNode;
+}
+
+export function EnglishCompanionApp({ host }: { host?: CompanionHost } = {}) {
+  const embedded = Boolean(host?.embedded);
+  const hostActive = host?.active !== false;
+  const hostRef = useRef(host);
+  hostRef.current = host;
   const { width, height } = useWindowDimensions();
   const client = useMemo(() => new EnglishClient(createTransport(API_ORIGIN)), []);
   const [gate, setGate] = useState<Gate>({ kind: "checking" });
@@ -164,9 +179,20 @@ export default function App() {
     } finally { checking.current = false; }
   }, [client, getQueue]);
 
-  useEffect(() => { void enter(); }, [enter]);
+  useEffect(() => { void enter(hostRef.current?.initialUser); }, [enter]);
 
   const today = gate.kind === "ready" ? accountDate(gate.clock, Date.now() - gate.clockAt) : "";
+  const dueCount = gate.kind === "ready"
+    ? visibleUnits.filter((unit) => unit.words.some((word) => word.quiz && gate.progress[word.id] && gate.progress[word.id].due <= today)).length
+    : 0;
+
+  useEffect(() => {
+    const report = hostRef.current?.onStatusChange;
+    if (!report) return;
+    if (gate.kind === "ready") report({ state: "ready", dueCount, summary: dueCount > 0 ? `복습 ${dueCount} Day` : "오늘 복습 완료" });
+    else if (gate.kind === "blocked") report({ state: "error", summary: gate.message });
+    else report({ state: "loading" });
+  }, [gate, dueCount]);
 
   /** Local progress and navigation update immediately; durable delivery runs independently. */
   const save = (results: Record<string, StudyResult>) => {
@@ -182,6 +208,12 @@ export default function App() {
   };
 
   const logout = async () => {
+    if (hostRef.current?.onLogout) {
+      resultQueue?.pause();
+      await clearSnapshot(userId.current || undefined);
+      await hostRef.current.onLogout();
+      return;
+    }
     resultQueue?.pause();
     setBusy(true);
     try {
@@ -200,10 +232,19 @@ export default function App() {
     }
   };
 
-  const expired = useCallback(() => { void clearSnapshot(userId.current || undefined); for (const queue of queues.current.values()) queue.pause(); setSession(null); setGate({ kind: "login", notice: "로그인이 끝났습니다. 다시 로그인해 주세요." }); }, []);
+  const expired = useCallback(() => {
+    void clearSnapshot(userId.current || undefined);
+    for (const queue of queues.current.values()) queue.pause();
+    setSession(null);
+    if (hostRef.current?.onExpired) {
+      hostRef.current.onExpired();
+      return;
+    }
+    setGate({ kind: "login", notice: "로그인이 끝났습니다. 다시 로그인해 주세요." });
+  }, []);
 
   useMainReturn({
-    active: gate.kind === "ready" && Boolean(session),
+    active: hostActive && gate.kind === "ready" && Boolean(session),
     busy,
     dirty: false,
     subPath: "session",
@@ -213,7 +254,7 @@ export default function App() {
     },
   });
   useMainReturn({
-    active: gate.kind === "ready" && !session && tab !== "today",
+    active: hostActive && gate.kind === "ready" && !session && tab !== "today",
     dirty: false,
     subPath: tab !== "today" ? tab : undefined,
     onReturn: () => setTab("today"),
@@ -225,9 +266,9 @@ export default function App() {
   else if (gate.kind === "blocked") body = <View style={[layout.body, { maxWidth: 520 }]}><Card title="English Companion"><T>{gate.message}</T><Btn variant="primary" title="메인 페이지로" onPress={() => void Linking.openURL(SITE_ORIGIN + "/")} /></Card></View>;
   else if (library.openId) body = <ReaderScreen library={library} api={libraryApi} language="en" notify={notify} />;
   else if (session) body = <SessionScreen libraryApi={libraryApi} vocabularyWords={allUnits.flatMap(unit => unit.words)} key={session.title + session.words.map((word) => word.id).join()} start={session} progress={gate.progress} isPhone={!desktop} busy={busy} error={error} onSave={save} onClose={() => { setError(""); setSession(null); }} />;
-  else body = <Chrome desktop={desktop} section={section} onSectionChange={(next) => { changeSection(next); if (tab === "settings") setTab("today"); }} onHome={goHome} tab={tab} today={today} dueCount={visibleUnits.filter((unit) => unit.words.some((word) => word.quiz && gate.progress[word.id] && gate.progress[word.id].due <= today)).length} onNavigate={setTab}>
+  else body = <Chrome desktop={desktop} section={section} onSectionChange={(next) => { changeSection(next); if (tab === "settings") setTab("today"); }} onHome={goHome} onOpenHub={host?.onOpenHub} adSlot={tab !== "settings" ? host?.renderAdSlot?.("english-bottom") : undefined} tab={tab} today={today} dueCount={dueCount} onNavigate={setTab}>
     {tab === "settings"
-      ? <SettingsScreen client={client} phone={!desktop} busy={busy} error={error} display={display} onDisplay={changeDisplay} onLogout={() => void logout()} onExpired={expired}
+      ? <SettingsScreen client={client} phone={!desktop} busy={busy} error={error} display={display} onDisplay={changeDisplay} onLogout={() => void logout()} onExpired={expired} hideUnifiedAppLink={embedded}
         vocabularies={personalMaterials.filter(book => book.kind === "vocabulary")}
         onDeleteVocabulary={async (book) => { await libraryApi("library/delete", { id: book.id }); await library.reload(); notify(`${book.title} 단어장을 삭제했습니다.`); }} />
       : <HomeScreen libraryApi={libraryApi} library={library} section={section} notify={notify} key={gate.user.id} books={books} bookId={bookId} onBookChange={chooseVocabulary} units={allUnits} progress={gate.progress} today={today} desktop={desktop} tab={tab} dailyNewDays={display.dailyNewDays}
@@ -244,9 +285,10 @@ export default function App() {
         onReview={(row) => setSession({ title: row.unit.title + " 복습", words: row.dueWords, review: true })} />}
   </Chrome>;
 
-  return <SafeAreaProvider><Theme.Provider value={c}><Device.Provider value={{ phone: !desktop }}><BrowserTheme scheme={display.theme} />
-    <StatusBar style={display.theme === "light" ? "dark" : "light"} />
-    <SafeAreaView style={[{ flex: 1, backgroundColor: c.bg }, gradient(`radial-gradient(900px 480px at 85% -10%, ${c.glow}, transparent 70%)`)]}>
+  const content = <Theme.Provider value={c}><Device.Provider value={{ phone: !desktop }}>
+    {hostActive && <BrowserTheme scheme={display.theme} />}
+    {hostActive && <StatusBar style={display.theme === "light" ? "dark" : "light"} />}
+    <View style={[{ flex: 1, backgroundColor: c.bg }, gradient(`radial-gradient(900px 480px at 85% -10%, ${c.glow}, transparent 70%)`)]}>
       <Notices />
       {gate.kind === "ready" && gate.verified && delivery.items.length > 0 && <View style={{ padding: 10, gap: 6 }}>
         <T size={12} tone="muted">전송 대기 {delivery.items.length}건 · 연결되면 자동으로 재시도합니다.</T>
@@ -257,6 +299,13 @@ export default function App() {
       <View ref={node => { if (Platform.OS === "web" && node instanceof HTMLElement) node.inert = gate.kind === "ready" && !gate.verified; }} accessibilityElementsHidden={gate.kind === "ready" && !gate.verified} importantForAccessibility={gate.kind === "ready" && !gate.verified ? "no-hide-descendants" : "auto"} pointerEvents={gate.kind === "ready" && !gate.verified ? "none" : "auto"} style={{ flex: 1 }}>{body}</View>
       <CompletionHud completion={gate.kind === "ready" && !session ? completion : null} today={today} onDone={() => setCompletion(null)} />
       {toast && <Toast text={toast.text} tone={toast.tone} phone={!desktop && !session && !library.openId} />}
-    </SafeAreaView>
-  </Device.Provider></Theme.Provider></SafeAreaProvider>;
+    </View>
+  </Device.Provider></Theme.Provider>;
+
+  if (embedded) return content;
+  return <SafeAreaProvider><SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>{content}</SafeAreaView></SafeAreaProvider>;
+}
+
+export default function App() {
+  return <EnglishCompanionApp />;
 }

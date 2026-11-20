@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Linking, Platform, ScrollView, View } from "react-native";
 import type { EnglishClient } from "../api/client";
 import { ApiError, type Account } from "../api/types";
-import { SITE_ORIGIN } from "../config";
+import { SITE_ORIGIN, UNIFIED_APP_URL } from "../config";
 import type { Display } from "../display";
 import { WORDS_PER_DAY } from "../domain/dashboard";
 import type { LibraryBook } from "../readingWords";
@@ -26,9 +26,9 @@ function Row({ title, hint, children }: { title: string; hint?: string; children
  * Account card and display settings in the Japanese Companion layout. Profile and password changes stay on the main site.
  * On the web the session cookie is shared, so signing out here also signs out the other jace-s apps in this browser.
  */
-export function SettingsScreen({ client, phone, busy, error, display, onDisplay, onLogout, onExpired, vocabularies = [], onDeleteVocabulary }: {
+export function SettingsScreen({ client, phone, busy, error, display, onDisplay, onLogout, onExpired, vocabularies = [], onDeleteVocabulary, hideUnifiedAppLink }: {
   client: EnglishClient; phone: boolean; busy: boolean; error: string; display: Display; onDisplay: (next: Display) => void; onLogout: () => void; onExpired: () => void;
-  vocabularies?: LibraryBook[]; onDeleteVocabulary?: (book: LibraryBook) => Promise<void>;
+  vocabularies?: LibraryBook[]; onDeleteVocabulary?: (book: LibraryBook) => Promise<void>; hideUnifiedAppLink?: boolean;
 }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
@@ -67,6 +67,7 @@ export function SettingsScreen({ client, phone, busy, error, display, onDisplay,
         <Btn title="개발자에 대해" style={{ flex: 1 }} onPress={() => { const url = SITE_ORIGIN + "/about"; if (Platform.OS === "web" && typeof window !== "undefined") window.open(url, "_blank", "noopener,noreferrer"); else void Linking.openURL(url); }} testID="about-developer" />
         <Btn title="피드백" style={{ flex: 1 }} onPress={() => setFeedbackOpen(true)} testID="feedback" />
       </View>
+      {!hideUnifiedAppLink && <Btn title="Education Companion 통합 앱" onPress={() => { if (Platform.OS === "web" && typeof window !== "undefined") window.open(UNIFIED_APP_URL, "_blank", "noopener,noreferrer"); else void Linking.openURL(UNIFIED_APP_URL); }} testID="unified-app-link" />}
       {Platform.OS === "web" && <T size={13.1} tone="muted">같은 브라우저의 다른 jace-s 앱과 메인 사이트도 함께 로그아웃됩니다.</T>}
       {!!error && <T size={13.1} tone="error">{error}</T>}
     </Card>
