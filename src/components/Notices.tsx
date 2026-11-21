@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, type ViewStyle } from "react-native";
 import { API_ORIGIN, NOTICE_APP_ID } from "../config";
 import { colors } from "../ui";
 import { resolveNoticeToast, type Notice } from "./noticeToast";
@@ -44,10 +44,14 @@ export function Notices() {
   if (!toast || closed === toast.key) return null;
   // Several notices share one toast, one line each, instead of stacking separate toasts
   return (
-    <View accessibilityLabel="서비스 공지" style={{ gap: 8 }}>
+    <View
+      pointerEvents="box-none"
+      accessibilityLabel="서비스 공지"
+      style={{ position: "absolute", top: 12, left: 12, right: 12, zIndex: 95, elevation: 10, alignItems: "center", gap: 8 }}
+    >
       <View
         accessibilityRole={toast.kind === "outage" ? "alert" : "summary"}
-        style={{ flexDirection: "row", gap: 8, alignItems: "flex-start", padding: 12, borderRadius: 10, backgroundColor: colors.surfaceRaised, borderColor: colors.accent, borderWidth: 1 }}
+        style={{ flexDirection: "row", gap: 8, alignItems: "flex-start", width: "100%", maxWidth: 480, padding: 12, borderRadius: 12, backgroundColor: colors.surfaceRaised, borderColor: colors.accent, borderWidth: 1, boxShadow: "0 12px 32px rgba(0, 0, 0, 0.35)" } as ViewStyle}
       >
         <View style={{ flex: 1, gap: 6 }}>
           {toast.lines.length === 1 ? (

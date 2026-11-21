@@ -3,7 +3,7 @@ import { clearSnapshot, readSnapshot, saveSnapshot } from "./studySnapshot";
 import { useCompanionReady } from "./useCompanionReady";
 import type { LibraryApi, LibraryBook } from "./readingWords";
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Linking, Platform, useWindowDimensions, View } from "react-native";
+import { Linking, Platform, Pressable, Text, useWindowDimensions, View, type ViewStyle } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { accountDate, EnglishClient } from "./api/client";
@@ -127,9 +127,11 @@ export function EnglishCompanionApp({ host }: { host?: CompanionHost } = {}) {
   }, [client]);
 
   const checking = useRef(false);
+  const [rechecking, setRechecking] = useState(false);
   const enter = useCallback(async (knownUser?: User) => {
     if (checking.current) return;
     checking.current = true;
+    setRechecking(true);
     let finished = false;
     let previewQueue: ResultQueue | undefined;
     const cached = knownUser ? Promise.resolve(null) : readSnapshot<CachedStudy>().then(async snapshot => {
@@ -176,7 +178,7 @@ export function EnglishCompanionApp({ host }: { host?: CompanionHost } = {}) {
       if (!snapshot || BLOCKED[code]) {
         setGate({ kind: "blocked", message: BLOCKED[code] ?? "로그인 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요." });
       }
-    } finally { checking.current = false; }
+    } finally { checking.current = false; setRechecking(false); }
   }, [client, getQueue]);
 
   useEffect(() => { void enter(hostRef.current?.initialUser); }, [enter]);
@@ -285,19 +287,107 @@ export function EnglishCompanionApp({ host }: { host?: CompanionHost } = {}) {
         onReview={(row) => setSession({ title: row.unit.title + " 복습", words: row.dueWords, review: true })} />}
   </Chrome>;
 
+  const toastBottom = !desktop && !session && !library.openId ? 76 : 24;
   const content = <Theme.Provider value={c}><Device.Provider value={{ phone: !desktop }}>
     {hostActive && <BrowserTheme scheme={display.theme} />}
     {hostActive && <StatusBar style={display.theme === "light" ? "dark" : "light"} />}
     <View style={[{ flex: 1, backgroundColor: c.bg }, gradient(`radial-gradient(900px 480px at 85% -10%, ${c.glow}, transparent 70%)`)]}>
-      <Notices />
-      {gate.kind === "ready" && gate.verified && delivery.items.length > 0 && <View style={{ padding: 10, gap: 6 }}>
-        <T size={12} tone="muted">전송 대기 {delivery.items.length}건 · 연결되면 자동으로 재시도합니다.</T>
-        {!delivery.persistent && <T size={12} tone="error">이 기기에서는 큐를 저장할 수 없어 앱을 닫으면 대기 기록이 사라질 수 있습니다.</T>}
-        {delivery.items.filter(job => job.status === "failed").map(job => <View key={job.id}><T size={12} tone="error">전송 거절: {job.error}</T><Btn title="재전송" onPress={() => resultQueue?.retry(job.id)} /></View>)}
-      </View>}
-      {gate.kind === "ready" && !gate.verified && <Btn title="연결 다시 확인" onPress={() => void enter()} />}
       <View ref={node => { if (Platform.OS === "web" && node instanceof HTMLElement) node.inert = gate.kind === "ready" && !gate.verified; }} accessibilityElementsHidden={gate.kind === "ready" && !gate.verified} importantForAccessibility={gate.kind === "ready" && !gate.verified ? "no-hide-descendants" : "auto"} pointerEvents={gate.kind === "ready" && !gate.verified ? "none" : "auto"} style={{ flex: 1 }}>{body}</View>
       <CompletionHud completion={gate.kind === "ready" && !session ? completion : null} today={today} onDone={() => setCompletion(null)} />
+      <Notices />
+      {gate.kind === "ready" && gate.verified && delivery.items.length > 0 && (
+        <View
+          pointerEvents="box-none"
+          style={{ position: "absolute", left: 16, right: 16, bottom: toastBottom, zIndex: 85, elevation: 8, alignItems: "center" }}
+        >
+          <View
+            style={{
+              width: "100%",
+              maxWidth: 460,
+              gap: 6,
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: c.border,
+              backgroundColor: c.sunken,
+              boxShadow: "0 16px 38px rgba(0, 0, 0, 0.5)",
+            } as ViewStyle}
+          >
+            <T size={12} tone="muted">전송 대기 {delivery.items.length}건 · 연결되면 자동으로 재시도합니다.</T>
+            {!delivery.persistent && <T size={12} tone="error">이 기기에서는 큐를 저장할 수 없어 앱을 닫으면 대기 기록이 사라질 수 있습니다.</T>}
+            {delivery.items.filter(job => job.status === "failed").map(job => (
+              <View key={job.id} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <T size={12} tone="error" style={{ flex: 1 }}>전송 거절: {job.error}</T>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => resultQueue?.retry(job.id)}
+                  style={({ pressed }) => ({
+                    paddingVertical: 4,
+                    paddingHorizontal: 10,
+                    borderRadius: 999,
+                    backgroundColor: c.errorSoft,
+                    borderWidth: 1,
+                    borderColor: c.errorLine,
+                    opacity: pressed ? 0.8 : 1,
+                  })}
+                >
+                  <Text style={{ color: c.error, fontSize: 12, fontWeight: "700" }}>재전송</Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+      {gate.kind === "ready" && !gate.verified && (
+        <View
+          pointerEvents="box-none"
+          style={{ position: "absolute", left: 16, right: 16, bottom: toastBottom, zIndex: 100, elevation: 12, alignItems: "center" }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              maxWidth: 460,
+              paddingVertical: 10,
+              paddingHorizontal: 16,
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: rechecking ? c.border : c.accentLine,
+              backgroundColor: c.sunken,
+              boxShadow: "0 16px 38px rgba(0, 0, 0, 0.5)",
+            } as ViewStyle}
+          >
+            {rechecking ? (
+              <Text accessibilityRole="summary" style={{ color: c.text, fontSize: 13.5, fontWeight: "600" }}>
+                연결 확인 중...
+              </Text>
+            ) : (
+              <>
+                <Text accessibilityRole="alert" style={{ color: c.text, fontSize: 13.5, fontWeight: "600" }}>
+                  연결 확인 필요
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void enter()}
+                  style={({ pressed }) => ({
+                    paddingVertical: 4,
+                    paddingHorizontal: 10,
+                    borderRadius: 999,
+                    backgroundColor: c.soft,
+                    borderWidth: 1,
+                    borderColor: c.accentLine,
+                    opacity: pressed ? 0.8 : 1,
+                  })}
+                >
+                  <Text style={{ color: c.accentStrong, fontSize: 12.8, fontWeight: "700" }}>다시 확인</Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        </View>
+      )}
       {toast && <Toast text={toast.text} tone={toast.tone} phone={!desktop && !session && !library.openId} />}
     </View>
   </Device.Provider></Theme.Provider>;
