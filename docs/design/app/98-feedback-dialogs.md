@@ -8,7 +8,7 @@ Signed in settings reuse Sheet: slide on phones and fade on desktop. submitFeedb
 
 - Spec: [Feedback Dialogs](../../specs/app/98-feedback-dialogs.md)
 - Architecture: [Overview](../../architecture/10-overview.md)
-- Scenarios: [Feedback Dialogs](../../testing/scenarios/app/98-feedback-dialogs.md)
+- Scenarios: [Feedback Dialogs](../../testing/test-cases/app/98-feedback-dialogs.md)
 
 ## Example
 

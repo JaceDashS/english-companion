@@ -2,7 +2,7 @@
 
 - Spec: [Requirements](../../specs/app/50-english-vocabulary.md)
 - Architecture: [Overview](../../architecture/10-overview.md)
-- Scenarios: [Cases](../../testing/scenarios/app/50-english-vocabulary.md)
+- Scenarios: [Cases](../../testing/test-cases/app/50-english-vocabulary.md)
 
 ## Contracts
 - Input: Account identity, book ID, versioned imported words, roots, provided examples, question pools and quiz request identity.

@@ -2,7 +2,7 @@
 
 - Spec: [Responsive Layout](../../specs/app/30-responsive-layout.md)
 - Architecture: [Overview](../../architecture/10-overview.md)
-- Scenarios: [Responsive Layout](../../testing/scenarios/app/30-responsive-layout.md)
+- Scenarios: [Responsive Layout](../../testing/test-cases/app/30-responsive-layout.md)
 
 ## Layout Policy
 - Input: `useWindowDimensions()` width and height in logical pixels, and existing manual device preference where supported.
@@ -24,7 +24,7 @@
 - Output: A mobile-only full-width selector above today, Unit and progress; desktop controls and all-unit presentation stay unchanged.
 - Code: `src/BookSelect.tsx` exports `BookSelect`, using a labelled native HTML select on web and the existing themed Sheet with radio options on Android. Minimum control and option touch height is 44 pixels; empty lists disable selection. `src/screens/HomeScreen.tsx` renders it only when desktop is false.
 - Scenario: At 390x844 choose the second book. Steps: Update App selection and rebuild dashboard rows from that book's units. Expected result: Its Unit list and totals appear; resizing to 1440x900 restores the original all-unit desktop view with no dropdown.
-- All scenarios: [Mobile Book Dropdown](../../testing/scenarios/app/30-responsive-layout.md#mobile-book-dropdown).
+- All scenarios: [Mobile Book Dropdown](../../testing/test-cases/app/30-responsive-layout.md#mobile-book-dropdown).
 
 ```mermaid
 flowchart LR
@@ -55,7 +55,7 @@ flowchart LR
 - Scrollbar thumb uses dim, track uses panel, and hover uses muted. Standard scrollbar properties and WebKit fallback rules cover the supported browser renderers; operating-system popup menus remain browser-managed.
 - BookSelect keeps the actual select element, hides its edge-bound default arrow and paints an encoded theme-colored SVG chevron at right 14px center. Right padding is 40px; native selection sheets are unchanged.
 - Example input: Change dark to light while a long book title is selected. Steps: Re-render BrowserTheme with the current palette. Expected result: Browser control and scrollbar colors update immediately, and the inset arrow leaves room for the title.
-- Scenarios: [Themed Browser Controls](../../testing/scenarios/app/30-responsive-layout.md#themed-browser-controls).
+- Scenarios: [Themed Browser Controls](../../testing/test-cases/app/30-responsive-layout.md#themed-browser-controls).
 
 ## Product Brand Icon
 

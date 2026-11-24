@@ -13,4 +13,4 @@
 - Expected result: No displayed choice repeats; the final attempt asks for new imported sets.
 
 - Design: [Implementation](../../design/app/50-english-vocabulary.md)
-- Scenarios: [Cases](../../testing/scenarios/app/50-english-vocabulary.md)
+- Scenarios: [Cases](../../testing/test-cases/app/50-english-vocabulary.md)

@@ -2,7 +2,7 @@
 
 - Spec: [English Companion](../../specs/app/10-english-companion.md)
 - Architecture: [Overview](../../architecture/10-overview.md#single-screen-codebase)
-- All scenarios: [English Companion Scenarios](../../testing/scenarios/app/10-english-companion.md#english-companion-scenarios)
+- All scenarios: [English Companion Scenarios](../../testing/test-cases/app/10-english-companion.md#english-companion-scenarios)
 
 ## Screens And Flow
 - Input: Validated units, the account progress map and the account date.
@@ -31,7 +31,7 @@
 - Code: `src/content/content.ts` exports `EnglishBook`, `parseBooks` and `parseContent`. Legacy units become book default with title 기본 교재 without rewriting any Unit or word ID. Book, unit and word IDs are globally unique within their respective kinds; titles must be nonempty for books, and quizzes retain four sentences and answer indices 0 to 3.
 - `src/App.tsx` owns book selection for the signed-in app session and resets it on logout or account change. `src/screens/HomeScreen.tsx` filters mobile views to that book; desktop consumes all units exactly as before. The mobile due badge uses the same selected units. Selection is not persisted across a full reload and never changes the progress API contract.
 - Example input: Two books containing existing run and set word IDs. Steps: Select the second book on mobile, open study, return, then resize to desktop. Expected result: Mobile retains its second-book scope and existing word progress; desktop lists both books' units with no new selector.
-- All scenarios: [Book Catalog Compatibility](../../testing/scenarios/app/10-english-companion.md#book-catalog-compatibility).
+- All scenarios: [Book Catalog Compatibility](../../testing/test-cases/app/10-english-companion.md#book-catalog-compatibility).
 
 ## Progress And API
 - Input: Graded results `{id, result}`.
@@ -52,7 +52,7 @@
 - Reference: [CMake object path limit](https://cmake.org/cmake/help/v3.22/variable/CMAKE_OBJECT_PATH_MAX.html) describes the hashing of object paths above the configured limit.
 - Scenario: Build under a nested Windows checkout with Expo modules compiled from source. Both the app and Expo libraries use the short staging paths and the release APK is copied only after Gradle succeeds.
 - Guide: [Build](../../guides/10-development.md#build)
-- All scenarios: [Windows Native Build](../../testing/scenarios/app/10-english-companion.md#windows-native-build)
+- All scenarios: [Windows Native Build](../../testing/test-cases/app/10-english-companion.md#windows-native-build)
 
 ## Native Google Implementation
 
@@ -64,7 +64,7 @@
 - Representative scenario input: Picker cancellation followed by retry. Steps: Cancel once and open again. Expected result: No first exchange and a new nonce for the second attempt.
 - Spec: [Companion requirements](../../specs/app/10-english-companion.md#android-google-account-picker)
 - Architecture: [Overview](../../architecture/10-overview.md)
-- Scenarios: [Authentication cases](../../testing/scenarios/app/10-english-companion.md#native-google-contracts)
+- Scenarios: [Authentication cases](../../testing/test-cases/app/10-english-companion.md#native-google-contracts)
 
 ```mermaid
 flowchart LR
