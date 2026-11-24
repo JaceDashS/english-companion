@@ -17,6 +17,10 @@ export default {
     },
     ios: { bundleIdentifier: "com.jaces.englishcompanion", supportsTablet: true },
     web: { bundler: "metro", output: "single", name: "English Companion", backgroundColor: "#0f1513", favicon: "./assets/icon.png" },
-    plugins: ["expo-secure-store", "./plugins/with-short-cmake-path.cjs"],
+    plugins: [
+      "expo-secure-store",
+      "./plugins/with-short-cmake-path.cjs",
+      "./plugins/with-release-signing.cjs",
+    ],
   },
 };
